@@ -1,4 +1,4 @@
-# time_series_pred
+# Deep Learning Model for Signal Data Prediction
 
 ## Instruction:
 Run main.py to start the training and testing.<br />
