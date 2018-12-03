@@ -3,7 +3,6 @@ import torch
 from torch import nn
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
 from sklearn.preprocessing import scale
 import torch.utils
 from torch.autograd import Variable
