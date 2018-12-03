@@ -1,6 +1,6 @@
 # Deep Learning Model for Signal Data Prediction
 
-## Instruction:
+## Instruction
 Run main.py to start the training and testing.<br />
 Configuration of hyper parameters is also in main.py, including batch size, learning rate, etc.<br />
 To configure, open main.py.<br />
@@ -36,7 +36,7 @@ The following contains all the parameters we have so far for tuning:<br />
         'weight_decay' : 0.0,
     }
 ```
-## Files:
+## Files
 - main.py: configuration and hyper tuning.<br />
 - models.py: including all the architecture of all models.<br />
 - utils.py: data loading using pytorch dataloader and dataset
