@@ -1,9 +1,8 @@
 # Deep Learning Model for Signal Data Prediction
 
 ## Instruction
-Run main.py to start the training and testing.<br />
-Configuration of hyper parameters is also in main.py, including batch size, learning rate, etc.<br />
-To configure, open main.py.<br />
+Run `main.py` to start the training and testing.<br />
+To configure parameters, open `main.py`.<br />
 ## Model Selection
 If we want to train the dataset using fnn, set <br />
 `model = "fnn"`.<br />
