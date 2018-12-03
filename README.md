@@ -4,15 +4,15 @@
 Run main.py to start the training and testing.<br />
 Configuration of hyper parameters is also in main.py, including batch size, learning rate, etc.<br />
 To configure, open main.py.<br />
-# Model Selection
+## Model Selection
 If we want to train the dataset using fnn, set <br />
 `model = "fnn"`.<br />
 if we want to train the dataset using gru, set <br />
 `model = "gru"`.<br />
 
-# Path Configuration
+## Path Configuration
 Set `path = "PATH OF YOUR DATASET(TA1 or TA2)"`, for example: `path = "data/TA1"`<br />
-# Parameter Tuning
+## Parameter Tuning
 In the model parameter part of main.py, we could set the value of parameters directly, for example:<br />
 Set<br />
 `'batch_size'   : 10` <br />
