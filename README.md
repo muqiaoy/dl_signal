@@ -36,8 +36,8 @@ The following contains all the parameters we have so far for tuning:<br />
     }
 ```
 ## Files
-- main.py: configuration and hyper tuning.<br />
-- models.py: including all the architecture of all models.<br />
-- utils.py: data loading using pytorch dataloader and dataset
-- fnn.py: train and test setup of fnn model
-- gru.py: train and test setup of gru model
+- `main.py`: configuration and hyper tuning.<br />
+- `models.py`: including all the architecture of all models.<br />
+- `utils.py`: data loading using pytorch dataloader and dataset
+- `fnn.py`: train and test setup of fnn model
+- `gru.py`: train and test setup of gru model
