@@ -6,9 +6,9 @@ Configuration of hyper parameters is also in main.py, including batch size, lear
 To configure, open main.py.<br />
 # Model Selection
 If we want to train the dataset using fnn, set <br />
-`model = "fnn"`<br />.
+`model = "fnn"`.<br />
 if we want to train the dataset using gru, set <br />
-`model = "gru"`<br />.
+`model = "gru"`.<br />
 
 # Path Configuration
 Set `path = "PATH OF YOUR DATASET(TA1 or TA2)"`, for example: `path = "data/TA1"`<br />
