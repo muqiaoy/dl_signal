@@ -17,7 +17,7 @@ Set<br />
 `'batch_size'   : 10` <br />
 to <br />
 `'batch_size'   : 20` <br />
-will change the batch size of the model from 10 to 20.<br />
+will change the batch size of the model from 10 to 20.<br /><br />
 The following contains all the parameters we have so far for tuning:<br />
 ```Python
     # Model parameter
