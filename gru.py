@@ -103,21 +103,26 @@ for epoch in range(args.epoch):
         loss.backward()
         op.step()
     
-    cmp_train, _, acc_train = eval_BiGRU(training_set.data, training_set.label,
+    train_compressed_signal, _, acc_train = eval_BiGRU(training_set.data, training_set.label,
                                          model, num_classes, ce_loss, "train", path)
+    time_size = 256
+    compressed_size = 100
+    train_compressed_signal = train_compressed_signal.detach().cpu().numpy().reshape(-1, 256, 100)
 
     if acc_train > best_acc_train:
         best_acc_train = acc_train
         save_path = os.path.join(path, 'compressed_train_GRU')
-        np.save(save_path, cmp_train)
+        np.save(save_path, train_compressed_signal)
 
-    cmp_test, _, acc_test = eval_BiGRU(test_set.data, test_set.label,
+    test_compressed_signal, _, acc_test = eval_BiGRU(test_set.data, test_set.label,
                                        model, test_set.num_classes, ce_loss, "test", path)
+
+    test_compressed_signal = test_compressed_signal.detach().cpu().numpy().reshape(-1, 256, 100)
 
     if acc_test > best_acc_test:
         best_acc_test = acc_test
         save_path = os.path.join(path, 'compressed_test_GRU')
-        np.save(save_path, cmp_test)
+        np.save(save_path, test_compressed_signal)
 
     is_best = acc_test > best_acc_test
     best_acc_test = max(acc_test, best_acc_test)

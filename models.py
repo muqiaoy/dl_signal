@@ -39,7 +39,7 @@ def eval_BiGRU(data, label, model, num_classes, loss_func, name, path):
     global device
     with torch.no_grad():
         model.eval()
-        
+        print(label.shape)
         data = Variable(torch.from_numpy(data).float()).to(device=device)
         true_label = np.argmax(label, axis=2)
         label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
@@ -49,6 +49,9 @@ def eval_BiGRU(data, label, model, num_classes, loss_func, name, path):
         l = loss_func(output, label).item()
         pred = np.argmax(output.data.cpu().numpy(), axis=1)
         acc = np.mean(pred == true_label.reshape(-1))
+        print(pred[0:100])
+        print(true_label.reshape(-1)[0:100])
+
         print("%s loss %f and acc %f " % (name, l, acc))
         
         #Confusion Matrix Calculator
@@ -67,7 +70,7 @@ def eval_BiGRU(data, label, model, num_classes, loss_func, name, path):
 '''
 
 class FNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
+    def __init__(self, input_size, hidden_size, output_size, non_linear='tanh'):
         super(FNN, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size[0])
         self.num_hidden = len(hidden_size)
@@ -79,7 +82,8 @@ class FNN(nn.Module):
     
     def forward(self, x):
         global device
-        var_x = Variable(x).to(device=device)
+        #var_x = x.float().to(device=device)
+        var_x = x
         logitis = self.non_linear(self.fc1(var_x))
         for i in range(self.num_hidden - 1):
             logitis = self.non_linear(self.hidden[i](logitis))
@@ -95,13 +99,24 @@ def eval_FNN(data, label, model, num_classes, loss_func, name, path):
         data = Variable(torch.from_numpy(data).float()).to(device=device)
         true_label = np.argmax(label, axis=2)
         label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
-        compressed_signal, output = model(data)
-        output = output.view(-1, num_classes)
         
+        compressed_signal, output = model(data)
+        
+        #y = Variable(torch.from_numpy(label).long()).to(device=device)
+        #l = loss_func(log_py, y).item()
+        output = output.view(-1, num_classes)
+        #print(output)
         l = loss_func(output, label).item()
         pred = np.argmax(output.data.cpu().numpy(), axis=1)
         acc = np.mean(pred == true_label.reshape(-1))
+        print(pred[0:10])
+        print(true_label.reshape(-1)[0:10])
         print("%s loss %f and acc %f " % (name, l, acc))
+        
+        #pred = np.argmax(log_py.data.cpu().numpy(), axis=1)
+        #acc = np.mean(pred == label)
+        #print(label.shape)
+        #print(pred.shape)
         
         #Confusion Matrix Calculator
         cnf_matrix = confusion_matrix(true_label.reshape(-1), pred)
@@ -111,4 +126,5 @@ def eval_FNN(data, label, model, num_classes, loss_func, name, path):
         
         save_path = os.path.join(path,'confusion_matrix_' + name)
         np.save(save_path, cnf_matrix)
-    return compressed_signal, l, acc
+        
+        return compressed_signal, l, acc

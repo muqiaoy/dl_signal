@@ -1,6 +1,7 @@
 # Hyperparameters are listed in the beginning of main().
 # The loss is calculated in NLLLoss.
 # dropout currently not implemented
+
 import torch
 from torch import nn
 from torch.autograd import Variable
@@ -48,7 +49,7 @@ params_model = {
     'input_size' : int(args.input_size),
     'hidden_size': [int(args.hidden_size)] * int(args.num_layers),
     #'num_layers' : int(args.num_layers),
-    'dropout'    : float(args.dropout)
+    #'dropout'    : float(args.dropout)
 }
 params_op = {
     'lr'          : float(args.learning_rate),
@@ -101,6 +102,7 @@ for epoch in range(args.epoch):
         op.step()
 
     train_compressed_signal, _, acc_train = eval_FNN(training_set.data, training_set.label, model, num_classes, nll_loss, "train", path)
+
     time_size = 256
     compressed_size = 100
     train_compressed_signal = train_compressed_signal.detach().cpu().numpy().reshape(-1, 256, 100)
@@ -110,7 +112,7 @@ for epoch in range(args.epoch):
         np.save(save_path, train_compressed_signal)
 
 
-    test_compressed_signal, _, acc_test = eval_FNN(training_set.data, training_set.label, model, num_classes, nll_loss, "test", path)
+    test_compressed_signal, _, acc_test = eval_FNN(test_set.data, test_set.label, model, test_set.num_classes, nll_loss, "test", path)
     test_compressed_signal = test_compressed_signal.detach().cpu().numpy().reshape(-1, 256, 100)
     
     if acc_test > best_acc_test:
