@@ -17,7 +17,7 @@ from sklearn.metrics import confusion_matrix
 import itertools
 from utils import get_meta, get_len
 from utils import SignalDataset
-from models import BiGRU
+from models import BiRNN
 from models import eval_BiRNN
 import argparse
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -68,7 +68,7 @@ train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 test_set = SignalDataset(path, train=False)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
-model = BiGRU(**params_model, output_size=training_set.num_classes).to(device=device)
+model = BiRNN(**params_model, output_size=training_set.num_classes).to(device=device)
 ce_loss = nn.NLLLoss()
 op = torch.optim.SGD(model.parameters(), **params_op)
 
@@ -108,7 +108,7 @@ for epoch in range(args.epoch):
 
     if acc_train > best_acc_train:
         best_acc_train = acc_train
-        save_path = os.path.join(path, 'compressed_train_GRU')
+        save_path = os.path.join(path, 'compressed_train_RNN')
         np.save(save_path, cmp_train)
 
     cmp_test, _, acc_test = eval_BiRNN(test_set.data, test_set.label,
@@ -116,7 +116,7 @@ for epoch in range(args.epoch):
 
     if acc_test > best_acc_test:
         best_acc_test = acc_test
-        save_path = os.path.join(path, 'compressed_test_GRU')
+        save_path = os.path.join(path, 'compressed_test_RNN')
         np.save(save_path, cmp_test)
 
     is_best = acc_test > best_acc_test

@@ -15,6 +15,26 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     GRU model
 '''
 
+class BiRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=1, dropout=0.0):
+        super(BiRNN, self).__init__()
+        self.rnn = nn.RNN(
+                          input_size=input_size,
+                          hidden_size=hidden_size,
+                          num_layers=num_layers,
+                          batch_first=True,
+                          bidirectional=False,
+                          dropout=dropout
+                          )
+                          
+        self.out = nn.Linear(hidden_size, output_size)
+    
+    def forward(self, x):
+        r_out, h_n = self.rnn(x, None)
+        
+        output = self.out(r_out) # output is batch_size*256*60
+        return r_out, nn.functional.log_softmax(output, dim=2)
+
 class BiGRU(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=1, dropout=0.0):
         super(BiGRU, self).__init__()
@@ -27,19 +47,22 @@ class BiGRU(nn.Module):
                           dropout=dropout
                           )
                           
-        self.out = nn.Linear(hidden_size*2, output_size)
+        self.out = nn.Sequential(
+                nn.Dropout(p = dropout),
+                nn.Linear(hidden_size*2, output_size)
+                )
     
     def forward(self, x):
         r_out, h_n = self.gru(x, None)
-        
+ 
         output = self.out(r_out) # output is batch_size*256*60
         return r_out, nn.functional.log_softmax(output, dim=2)
 
-def eval_BiGRU(data, label, model, num_classes, loss_func, name, path):
+def eval_BiRNN(data, label, model, num_classes, loss_func, name, path):
     global device
     with torch.no_grad():
         model.eval()
-        print(label.shape)
+        
         data = Variable(torch.from_numpy(data).float()).to(device=device)
         true_label = np.argmax(label, axis=2)
         label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
@@ -49,9 +72,6 @@ def eval_BiGRU(data, label, model, num_classes, loss_func, name, path):
         l = loss_func(output, label).item()
         pred = np.argmax(output.data.cpu().numpy(), axis=1)
         acc = np.mean(pred == true_label.reshape(-1))
-        print(pred[0:100])
-        print(true_label.reshape(-1)[0:100])
-
         print("%s loss %f and acc %f " % (name, l, acc))
         
         #Confusion Matrix Calculator
@@ -70,7 +90,7 @@ def eval_BiGRU(data, label, model, num_classes, loss_func, name, path):
 '''
 
 class FNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, non_linear='tanh'):
+    def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
         super(FNN, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size[0])
         self.num_hidden = len(hidden_size)
@@ -82,8 +102,7 @@ class FNN(nn.Module):
     
     def forward(self, x):
         global device
-        #var_x = x.float().to(device=device)
-        var_x = x
+        var_x = Variable(x).to(device=device)
         logitis = self.non_linear(self.fc1(var_x))
         for i in range(self.num_hidden - 1):
             logitis = self.non_linear(self.hidden[i](logitis))
@@ -99,24 +118,13 @@ def eval_FNN(data, label, model, num_classes, loss_func, name, path):
         data = Variable(torch.from_numpy(data).float()).to(device=device)
         true_label = np.argmax(label, axis=2)
         label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
-        
         compressed_signal, output = model(data)
-        
-        #y = Variable(torch.from_numpy(label).long()).to(device=device)
-        #l = loss_func(log_py, y).item()
         output = output.view(-1, num_classes)
-        #print(output)
+        
         l = loss_func(output, label).item()
         pred = np.argmax(output.data.cpu().numpy(), axis=1)
         acc = np.mean(pred == true_label.reshape(-1))
-        print(pred[0:10])
-        print(true_label.reshape(-1)[0:10])
         print("%s loss %f and acc %f " % (name, l, acc))
-        
-        #pred = np.argmax(log_py.data.cpu().numpy(), axis=1)
-        #acc = np.mean(pred == label)
-        #print(label.shape)
-        #print(pred.shape)
         
         #Confusion Matrix Calculator
         cnf_matrix = confusion_matrix(true_label.reshape(-1), pred)
@@ -126,5 +134,4 @@ def eval_FNN(data, label, model, num_classes, loss_func, name, path):
         
         save_path = os.path.join(path,'confusion_matrix_' + name)
         np.save(save_path, cnf_matrix)
-        
-        return compressed_signal, l, acc
+    return compressed_signal, l, acc
