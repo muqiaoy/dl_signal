@@ -41,3 +41,6 @@ The following contains all the parameters we have so far for tuning:<br />
 - `utils.py`: data loading using pytorch dataloader and dataset
 - `fnn.py`: train and test setup of fnn model
 - `gru.py`: train and test setup of gru model
+- `rnn.py`: train and test setup of rnn model
+- `rnn_iq.py`: train and test setup of rnn model for the iq dataset
+
