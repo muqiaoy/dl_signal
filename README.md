@@ -4,7 +4,7 @@
 Run `main.py` , with the following configuration:<br />
 `model = "rnn_iq"`<br />
 `path = [your path to iq data set folder]`<br />
-to start the training and testing using rnn model.<br />
+to start the training and testing the iq dataset using rnn model.<br />
 ## Instruction
 Run `main.py` to start the training and testing.<br />
 To configure parameters, open `main.py`.<br />
