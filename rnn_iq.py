@@ -103,7 +103,9 @@ for epoch in range(args.epoch):
         print('label: ' + str(label.shape))
         print(label)
         for i in range(data.size()[1]):
-            _, pred_label, hidden = model(data[:,i,:], hidden)
+            _, pred_label, hidden = model(
+                # This is not correct. I will update it soon
+                data[:,i,:].resize(1, data.shape[0], data.shape[2]), hidden) #input data size: (seq_len=1, batch, input_size)
         #_, pred_label = model(data, hidden)
         pred_label = pred_label.view(-1, num_classes)
         print('pred_label: ' + str(pred_label.shape))
