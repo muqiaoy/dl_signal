@@ -1,7 +1,10 @@
 # Deep Learning Model for Signal Data Prediction
 
 ## For iq dataset
-Run `rnn_iq.py` to start the training and testing using rnn model.<br />
+Run `main.py` , with the following configuration:<br />
+`model = "rnn_iq"`<br />
+`path = [your path to iq data set folder]`<br />
+to start the training and testing using rnn model.<br />
 ## Instruction
 Run `main.py` to start the training and testing.<br />
 To configure parameters, open `main.py`.<br />
