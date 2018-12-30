@@ -9,9 +9,12 @@ def get_meta(root_dir):
         line 1: size of train
         line 2: size of test
         """
-    
-    train_label = np.load(os.path.join(root_dir, "train_label.npz.npy"))
-    test_label = np.load(os.path.join(root_dir, "test_label.npz.npy"))
+    if 'iq' in root_dir:
+        train_label = np.load(os.path.join(root_dir, "iq_train_label.npy"))
+        test_label = np.load(os.path.join(root_dir, "iq_test_label.npy"))
+    else:    
+        train_label = np.load(os.path.join(root_dir, "train_label.npz.npy"))
+        test_label = np.load(os.path.join(root_dir, "test_label.npz.npy"))
     f = open(os.path.join(root_dir, 'meta.txt'), 'w+')
     #f.write(str(len(train_data)) + "\n")
     f.write(str(len(train_label)) + "\n")
@@ -75,6 +78,44 @@ class SignalDataset(Dataset):
         #Normalize data
         self.data = scale(self.data.reshape(self.len, -1), axis=0).reshape(self.data.shape)
         self.num_classes = self.label.shape[2]
+    
+    def __len__(self):
+        return self.len
+    
+    def __getitem__(self, idx):
+        data = self.data[idx]
+        label = self.label[idx]
+        #sample = {'data': data, 'label': label}
+        
+        return data, label
+
+class SignalDatasetNew(Dataset):
+    """Signal Dataset"""
+    
+    def __init__(self, root_dir, train=True, transform=None):
+        self.root_dir = root_dir
+        self.train = train
+        self.data = None
+        self.label = None
+        self.len = get_len(root_dir, train)
+        
+        if train:
+            self.data = np.load(os.path.join(root_dir, "iq_train_data.npy"))
+            self.label = np.load(os.path.join(root_dir, "iq_train_label.npy"))
+        else:
+            self.data = np.load(os.path.join(root_dir, "iq_test_data.npy"))
+            self.label = np.load(os.path.join(root_dir, "iq_test_label.npy"))
+        
+        #Normalize data
+        self.data = scale(self.data.reshape(self.len, -1), axis=0).reshape(self.data.shape)
+        
+        #Reshape data by concatenating real and imaginary part
+        self.data = self.data.reshape(-1,8,400)
+        
+        #Reshape label 
+        self.label = self.label.reshape(-1,1000)
+        
+        self.num_classes = self.label.shape[1]
     
     def __len__(self):
         return self.len

@@ -93,6 +93,8 @@ for epoch in range(args.epoch):
     print("Epoch %d" % epoch)
     model.train()
     for data_batched, label_batched in train_loader:
+        print(data_batched.shape)
+        print(label_batched.shape)
         data = Variable(data_batched.float()).to(device=device)
         label = Variable(np.argmax(label_batched, axis=2)
                          .long()).view(-1).to(device=device)

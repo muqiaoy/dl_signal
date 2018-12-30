@@ -3,10 +3,10 @@
 import os
 def main():
     # Choice of model
-    model = "gru" # fnn/gru/tcn, all in lower case
+    model = "rnn_iq" # fnn/gru/tcn, all in lower case
     
     # Data path
-    path = "/usr0/home/yaohungt/Dropbox/CMU/research/data_RFMLS/pre_processed_TA1"
+    path = "../dataset/iq"
     
     # Model parameter
     params_model = {
@@ -14,7 +14,7 @@ def main():
         
         #for fnn, hidden size will be applied to every hidden layer
         'hidden_size'  : 100,
-        'num_layers'   : 3,
+        'num_layers'   : 2,
         
         #drop out currently not implemented in fnn
         'dropout'      : 0.2,

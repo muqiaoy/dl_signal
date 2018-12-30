@@ -15,9 +15,12 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     GRU model
 '''
 
+#https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
+
 class BiRNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=1, dropout=0.0):
         super(BiRNN, self).__init__()
+        print(input_size)
         self.rnn = nn.RNN(
                           input_size=input_size,
                           hidden_size=hidden_size,
@@ -29,11 +32,11 @@ class BiRNN(nn.Module):
                           
         self.out = nn.Linear(hidden_size, output_size)
     
-    def forward(self, x):
-        r_out, h_n = self.rnn(x, None)
+    def forward(self, x, h_n):
+        r_out, h_n = self.rnn(x, h_n)
         
         output = self.out(r_out) # output is batch_size*256*60
-        return r_out, nn.functional.log_softmax(output, dim=2)
+        return r_out, nn.functional.log_softmax(output, dim=2), h_n
 
 class BiGRU(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=1, dropout=0.0):
@@ -62,26 +65,49 @@ def eval_BiRNN(data, label, model, num_classes, loss_func, name, path):
     global device
     with torch.no_grad():
         model.eval()
-        
-        data = Variable(torch.from_numpy(data).float()).to(device=device)
-        true_label = np.argmax(label, axis=2)
-        label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
-        compressed_signal, output = model(data)
-        output = output.view(-1, num_classes)
-        
-        l = loss_func(output, label).item()
-        pred = np.argmax(output.data.cpu().numpy(), axis=1)
-        acc = np.mean(pred == true_label.reshape(-1))
-        print("%s loss %f and acc %f " % (name, l, acc))
-        
-        #Confusion Matrix Calculator
-        cnf_matrix = confusion_matrix(true_label.reshape(-1), pred)
-        
-        #Normalize Confusion Matrix
-        cnf_matrix = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
-        
-        save_path = os.path.join(path,'confusion_matrix_' + name)
-        np.save(save_path, cnf_matrix)
+        if 'iq' in path:
+            data = Variable(torch.from_numpy(data).float()).to(device=device)
+            true_label = np.argmax(label, axis=1)
+            print('true_label: ' + true_label.shape)
+            label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
+            print('label: ' + label.shape)
+            compressed_signal, output = model(data)
+            output = output.view(-1, num_classes)
+
+            l = loss_func(output, label).item()
+            pred = np.argmax(output.data.cpu().numpy(), axis=1)
+            acc = np.mean(pred == true_label.reshape(-1))
+            print("%s loss %f and acc %f " % (name, l, acc))
+
+            #Confusion Matrix Calculator
+            cnf_matrix = confusion_matrix(true_label.reshape(-1), pred)
+
+            #Normalize Confusion Matrix
+            cnf_matrix = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
+
+            save_path = os.path.join(path,'confusion_matrix_' + name)
+            np.save(save_path, cnf_matrix)
+
+        else:
+            data = Variable(torch.from_numpy(data).float()).to(device=device)
+            true_label = np.argmax(label, axis=2)
+            label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
+            compressed_signal, output = model(data)
+            output = output.view(-1, num_classes)
+
+            l = loss_func(output, label).item()
+            pred = np.argmax(output.data.cpu().numpy(), axis=1)
+            acc = np.mean(pred == true_label.reshape(-1))
+            print("%s loss %f and acc %f " % (name, l, acc))
+
+            #Confusion Matrix Calculator
+            cnf_matrix = confusion_matrix(true_label.reshape(-1), pred)
+
+            #Normalize Confusion Matrix
+            cnf_matrix = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
+
+            save_path = os.path.join(path,'confusion_matrix_' + name)
+            np.save(save_path, cnf_matrix)
     
     return compressed_signal, l, acc
 
