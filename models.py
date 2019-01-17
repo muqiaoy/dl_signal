@@ -20,7 +20,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class BiRNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=1, dropout=0.0):
         super(BiRNN, self).__init__()
-        print(input_size)
         self.rnn = nn.RNN(
                           input_size=input_size,
                           hidden_size=hidden_size,
