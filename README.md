@@ -17,7 +17,7 @@ if we want to train the dataset using gru, set <br />
 ## Path Configuration
 Set `path = "PATH OF YOUR DATASET(TA1 or TA2)"`, for example: `path = "data/TA1"`<br />
 ## Parameter Tuning
-In the model parameter part of main.py, we could set the value of parameters directly, for example:<br />
+In the model parameter part of `main.py`, we could set the value of parameters directly, for example:<br />
 Set<br />
 `'batch_size'   : 10` <br />
 to <br />
