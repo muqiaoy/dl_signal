@@ -1,47 +1,23 @@
 # Deep Learning Model for Signal Data Prediction
 
-## For iq dataset
-Run `main.py` , with the following configuration:<br />
-`model = "rnn_iq"`<br />
-`path = [your path to iq data set folder]`<br />
-to start the training and testing the iq dataset using rnn model.<br />
 ## Instruction
-Run `main.py` to start the training and testing.<br />
-To configure parameters, open `main.py`.<br />
+An example command line to start the training and testing.<br />
+`python gru.py --path ../dataset/TA1 --batch_size 100 --hidden_size 100 --num_layers 2 --dropout 0.1 --learning_rate 0.05 --momentum 0.95 --weight_decay 0`<br />
+To configure parameters, directly configure it through command line.<br />
 ## Model Selection
 If we want to train the dataset using fnn, set <br />
-`model = "fnn"`.<br />
+`python fnn.py --path ......(as above)`.<br />
 if we want to train the dataset using gru, set <br />
-`model = "gru"`.<br />
+`python gru.py --path ......(as above)`.<br />
 
 ## Path Configuration
 Set `path = "PATH OF YOUR DATASET(TA1 or TA2)"`, for example: `path = "data/TA1"`<br />
 ## Parameter Tuning
-In the model parameter part of `main.py`, we could set the value of parameters directly, for example:<br />
-Set<br />
-`'batch_size'   : 10` <br />
-to <br />
-`'batch_size'   : 20` <br />
-will change the batch size of the model from 10 to 20.<br /><br />
-The following contains all the parameters we have so far for tuning:<br />
-```Python
-    # Model parameter
-    params_model = {
-        'batch_size'   : 10,
-        
-        #for fnn, hidden size will be applied to every hidden layer
-        'hidden_size'  : 100,
-        'num_layers'   : 2,
-        
-        #drop out currently not implemented in fnn
-        'dropout'      : 0.2,
-        'learning rate': 0.05,
-        'momentum'     : 0.95,
-        'weight_decay' : 0.0,
-    }
-```
+In the command line example:
+`python gru.py --path ../dataset/TA1 --batch_size 100 --hidden_size 100 --num_layers 2 --dropout 0.1 --learning_rate 0.05 --momentum 0.95 --weight_decay 0`<br />
+You could tune each parameter by change the value of specific parameter. For example, change the batch size to 200 would be:<br />
+`...... --batch_size 20 ......`<br />
 ## Files
-- `main.py`: configuration and hyper tuning.<br />
 - `models.py`: including all the architecture of all models.<br />
 - `utils.py`: data loading using pytorch dataloader and dataset
 - `fnn.py`: train and test setup of fnn model
