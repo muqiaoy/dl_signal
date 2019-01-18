@@ -1,5 +1,7 @@
 # Deep Learning Model for Signal Data Prediction
 
+## Models for iq dataset:
+Models for iq dataset will be in the name of `model_iq.py`, e.g. `gru_iq.py`.<br />
 ## Instruction
 An example command line to start the training and testing.<br />
 `python gru.py --path ../dataset/TA1 --batch_size 100 --hidden_size 100 --num_layers 2 --dropout 0.1 --learning_rate 0.05 --momentum 0.95 --weight_decay 0`<br />
