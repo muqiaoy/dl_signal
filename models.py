@@ -92,9 +92,9 @@ def eval_BiRNN(data, label, model, num_classes, loss_func, name, path):
         if 'iq' in path:
             data = Variable(torch.from_numpy(data).float()).to(device=device)
             true_label = np.argmax(label, axis=1)
-            print('true_label: ' + true_label.shape)
+            # print('true_label: ' + true_label.shape)
             label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
-            print('label: ' + label.shape)
+            # print('label: ' + label.shape)
             compressed_signal, output = model(data)
             output = output.view(-1, num_classes)
 
@@ -152,7 +152,7 @@ class FNN(nn.Module):
     
     def forward(self, x):
         global device
-        var_x = Variable(x).to(device=device)
+        var_x = Variable(x).to(device=device) #(100, 20, 160)
         logitis = self.non_linear(self.fc1(var_x))
         for i in range(self.num_hidden - 1):
             logitis = self.non_linear(self.hidden[i](logitis))
@@ -166,7 +166,8 @@ def eval_FNN(data, label, model, num_classes, loss_func, name, path):
         model.eval()
         
         data = Variable(torch.from_numpy(data).float()).to(device=device)
-        true_label = np.argmax(label, axis=2)
+        # print("label",label.shape)
+        true_label = np.argmax(label, axis=1)
         label = Variable(torch.from_numpy(true_label).long()).view(-1).to(device=device)  # -1
         compressed_signal, output = model(data)
         output = output.view(-1, num_classes)

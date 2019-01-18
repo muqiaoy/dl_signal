@@ -97,7 +97,7 @@ class SignalDatasetNew(Dataset):
         self.train = train
         self.data = None
         self.label = None
-        self.len = get_len(root_dir, train)
+        #self.len = get_len(root_dir, train)
         
         if train:
             self.data = np.load(os.path.join(root_dir, "iq_train_data.npy"))
@@ -106,11 +106,18 @@ class SignalDatasetNew(Dataset):
             self.data = np.load(os.path.join(root_dir, "iq_test_data.npy"))
             self.label = np.load(os.path.join(root_dir, "iq_test_label.npy"))
         
+        self.outer_batch_size = self.data.shape[0]
+        self.inner_batch_size = self.data.shape[1]
+
+        self.len = self.outer_batch_size * self.inner_batch_size
+
         #Normalize data
-        self.data = scale(self.data.reshape(self.len, -1), axis=0).reshape(self.data.shape)
+        self.data = scale(self.data.reshape(self.len, -1), axis=0).reshape(-1,20,160)
         
         #Reshape data by concatenating real and imaginary part
-        self.data = self.data.reshape(-1,8,400)
+        # self.data = self.data.reshape(-1,20,160)
+
+        self.input_size = self.data.shape[2]
         
         #Reshape label 
         self.label = self.label.reshape(-1,1000)
