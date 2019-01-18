@@ -13,7 +13,7 @@ if we want to train the dataset using gru, set <br />
 ## Path Configuration
 Set `path = "PATH OF YOUR DATASET(TA1 or TA2)"`, for example: `path = "data/TA1"`<br />
 ## Parameter Tuning
-In the command line example:
+In the command line example:<br />
 `python gru.py --path ../dataset/TA1 --batch_size 100 --hidden_size 100 --num_layers 2 --dropout 0.1 --learning_rate 0.05 --momentum 0.95 --weight_decay 0`<br />
 You could tune each parameter by change the value of specific parameter. For example, change the batch size to 200 would be:<br />
 `...... --batch_size 20 ......`<br />
