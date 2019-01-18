@@ -1,0 +1,4 @@
+# Shape of train data in iq: (5589, 32, 1600, 2)
+# Shape of train label in iq: (5589, 32, 1000)
+# shape of train data in TA1: (2383, 256, 512)
+# Shape of train label in TA1: (2383, 256, 60)
