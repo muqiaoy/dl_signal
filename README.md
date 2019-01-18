@@ -1,6 +1,6 @@
 # Deep Learning Model for Signal Data Prediction
 
-## Models for iq dataset:
+## iq dataset:
 Models for iq dataset will be in the name of `model_iq.py`, e.g. `gru_iq.py`.<br />
 ## Instruction
 An example command line to start the training and testing.<br />
