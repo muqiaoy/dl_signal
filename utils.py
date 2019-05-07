@@ -1,7 +1,10 @@
+# To read data and create pytorch dataset
 import os
 import numpy as np
+import torch
 from sklearn.preprocessing import scale
 from torch.utils.data import Dataset, DataLoader
+import shutil 
 
 def get_meta(root_dir):
     """Will write a meta.txt to store sample size of both train and test.
@@ -43,21 +46,13 @@ def get_len(root_dir, train):
         return int(lines[0])
     else:
         return int(lines[1])
-'''
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
-    parser.add_argument('--path', dest='path', type=str)
-    parser.add_argument('--batch_size', dest='batch_size', type=int)
-    parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=100) # applicable to: 'nn', 'gru'
-    parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) # applicable to: 'nn', 'gru'
-    parser.add_argument('--dropout',dest='dropout',type=float, default=0.0) # applicable to: 'nn', 'gru'
-    parser.add_argument('--learning_rate',dest='learning_rate',type=int,default=0.1) # applicable to: 'nn', 'gru'
-    parser.add_argument('--momentum', dest='momentum', type=float, default=0.0) # applicable to: 'nn','gru'
-    parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0) # applicable to: 'nn','gru'
-    parser.add_argument('--epoch', type=int, default=100) # applicable to: 'nn','gru'
-    parser.add_argument('--input_size', type=int, default=512) # applicable to: 'nn','gru'
-    return parser.parse_args()
-'''
+
+# helper function for checkpointing 
+def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, 'model_best.pth.tar')
+
 class SignalDataset(Dataset):
     """Signal Dataset"""
     
@@ -78,6 +73,10 @@ class SignalDataset(Dataset):
         #Normalize data
         self.data = scale(self.data.reshape(self.len, -1), axis=0).reshape(self.data.shape)
         self.num_classes = self.label.shape[2]
+        
+        print(self.data.shape)
+        print(self.label.shape)
+
     
     def __len__(self):
         return self.len
@@ -89,7 +88,7 @@ class SignalDataset(Dataset):
         
         return data, label
 
-class SignalDatasetNew(Dataset):
+class SignalDataset_iq(Dataset):
     """Signal Dataset"""
     
     def __init__(self, root_dir, train=True, transform=None):
@@ -108,22 +107,22 @@ class SignalDatasetNew(Dataset):
         
         self.outer_batch_size = self.data.shape[0]
         self.inner_batch_size = self.data.shape[1]
+        self.original_time_step = self.data.shape[2]
+        self.original_feature_dim = self.data.shape[3]
 
         self.len = self.outer_batch_size * self.inner_batch_size
+        self.input_size = self.data.shape[-1] * self.data.shape[-2]
+        self.num_classes = self.label.shape[-1]
 
-        #Normalize data
-        self.data = scale(self.data.reshape(self.len, -1), axis=0).reshape(-1,20,160)
-        
-        #Reshape data by concatenating real and imaginary part
-        # self.data = self.data.reshape(-1,20,160)
+        # reshape data for fnn_iq; -1th idx: feature (2)ss, -2th idx: time (1600)
+        self.data = self.data.reshape(-1, self.input_size)  # (# data, feature size = 1600 * 2)
 
-        self.input_size = self.data.shape[2]
+        # normalize data
+        self.data = scale(self.data, axis=0)
+
+        # reshape label 
+        self.label = self.label.reshape(-1, self.num_classes) # (# data, one hot 1000)
         
-        #Reshape label 
-        self.label = self.label.reshape(-1,1000)
-        
-        self.num_classes = self.label.shape[1]
-    
     def __len__(self):
         return self.len
     
@@ -133,3 +132,5 @@ class SignalDatasetNew(Dataset):
         #sample = {'data': data, 'label': label}
         
         return data, label
+
+

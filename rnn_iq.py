@@ -1,3 +1,4 @@
+# rnn for iq dataset
 # Hyperparameters are listed in the beginning of main().
 # The loss is calculated in NLLLoss.
 
@@ -5,40 +6,37 @@ from __future__ import print_function, division
 import os
 import torch
 from torch import nn
-import pandas as pd
-from skimage import io, transform
+# import pandas as pd
+# from skimage import io, transform
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import scale
 import torch.utils
-from torch.autograd import Variable
 from sklearn.metrics import confusion_matrix
 import itertools
-from utils import get_meta, get_len
-from utils import SignalDatasetNew
-from models import BiRNN
-from models import eval_BiRNN
+from utils import get_meta, get_len, save_checkpoint
+from transformer.Dataset import SignalDataset_iq
+from models import RNN, GRU, LSTM
+from models import eval_RNN_Model 
 import argparse
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
-
-
+# parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
+parser.add_argument('--arch', dest='arch', type=str) 
 parser.add_argument('--path', dest='path', type=str)
-parser.add_argument('--batch_size', dest='batch_size', type=int)
-parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=100) # applicable to: 'nn', 'gru'
-parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) # applicable to: 'nn', 'gru'
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=256)
+parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200) 
+parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200) 
+parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) 
 parser.add_argument('--dropout',dest='dropout',type=float, default=0.0) # applicable to: 'nn', 'gru'
-parser.add_argument('--learning_rate',dest='learning_rate',type=float, default=0.1) # applicable to: 'nn', 'gru'
-parser.add_argument('--momentum', dest='momentum', type=float, default=0.0) # applicable to: 'nn','gru'
+parser.add_argument('--learning_rate',dest='learning_rate',type=float, default=0.05) 
+parser.add_argument('--momentum', dest='momentum', type=float, default=0.0) 
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0) # applicable to: 'nn','gru'
-parser.add_argument('--epoch', type=int, default=100) # applicable to: 'nn','gru'
-parser.add_argument('--input_size', type=int, default=400) # applicable to: 'nn','gru'
+parser.add_argument('--epoch', type=int, default=1000) # applicable to: 'nn','gru'
+parser.add_argument('--time_step', type=int, default=20)
+parser.add_argument('--input_size', type=int, default=160) # applicable to: 'nn','gru'
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 
@@ -52,6 +50,7 @@ params_dataloader = {
 params_model = {
     'input_size' : int(args.input_size),
     'hidden_size': int(args.hidden_size),
+    # 'fc_hidden_size': int(args.fc_hidden_size),
     'num_layers' : int(args.num_layers),
     'dropout'    : float(args.dropout)
 }
@@ -60,18 +59,38 @@ params_op = {
     'momentum'    : float(args.momentum),
     'weight_decay': float(args.weight_decay)
 }
-path = args.path
 
-training_set = SignalDatasetNew(path, train=True)
+path = args.path
+time_step = args.time_step
+input_size = args.input_size
+arch = args.arch
+
+# load data
+training_set = SignalDataset_iq(path, train=True)
 train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 
-test_set = SignalDatasetNew(path, train=False)
+test_set = SignalDataset_iq(path, train=False)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
-model = BiRNN(**params_model, output_size=training_set.num_classes).to(device=device)
-nll_loss = nn.NLLLoss()
-op = torch.optim.SGD(model.parameters(), **params_op)
+# get num_classes from training data set 
+num_classes = training_set.num_classes
 
+# init model
+if arch == "rnn": 
+    model = RNN(**params_model, output_size=num_classes).to(device=device)
+elif arch == "gru": 
+    model = GRU(**params_model, output_size=num_classes).to(device=device)
+elif arch == "lstm": 
+    model = LSTM(**params_model, output_size=num_classes).to(device=device)
+else: 
+    raise Exception("Only 'rnn', 'gru', and 'lstm' are available model options.") 
+
+criterion = nn.NLLLoss()
+op = torch.optim.SGD(model.parameters(), **params_op)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    op, patience=4, factor=0.5, verbose=True)
+
+# resume from checkpoint 
 if args.resume:
     if os.path.isfile(args.resume):
         print("=> loading checkpoint '{}'".format(args.resume))
@@ -85,57 +104,54 @@ if args.resume:
     else:
         print("=> no checkpoint found at '{}'".format(args.resume))
 
+# training 
 best_acc_train = -1
 best_acc_test = -1
-    
+
 for epoch in range(args.epoch):
-    num_classes = training_set.num_classes
     print("Epoch %d" % epoch)
+
     model.train()
     for data_batched, label_batched in train_loader:
-        hidden = torch.zeros(1, params_model['hidden_size'])
-        data = Variable(data_batched.float()).to(device=device)
-        
-        label = Variable(np.argmax(label_batched, axis=1)
-                         .long()).view(-1).to(device=device)
-        # print('data: ' + str(data.shape))
-        # print(data)
-        # print('label: ' + str(label.shape))
-        # print(label)
-        for i in range(data.size()[1]):
-            _, pred_label, hidden = model(
-                # This is not correct. I will update it soon
-                data[:,i,:].resize(1, data.shape[0], data.shape[2]), hidden) #input data size: (seq_len=1, batch, input_size)
-        #_, pred_label = model(data, hidden)
-        pred_label = pred_label.view(-1, num_classes)
-        # print('pred_label: ' + str(pred_label.shape))
-        # print(pred_label)
-        loss = nll_loss(pred_label, label)
+        cur_batch_size = len(data_batched) 
+        data_batched = data_batched.reshape(cur_batch_size, time_step, input_size) # (batch_size, feature_dim) -> (batch_size, time_step, input_size) 
+
+
+        data = data_batched.float().to(device=device) 
+        # print(label_batched.shape)
+        label = np.argmax(label_batched, axis=1).long().view(-1).to(device=device) # (batch_size)
+
+
+        _, pred_label = model(data)
+
+        loss = criterion(pred_label, label)
         op.zero_grad()
         loss.backward()
         op.step()
     
-    cmp_train, _, acc_train = eval_BiRNN(training_set.data, training_set.label,
-                                         model, num_classes, nll_loss, "train", path)
-
+    train_compressed_signal, _, acc_train = eval_RNN_Model(train_loader, time_step, input_size,
+                                         model, num_classes, criterion, "train", path)
+    test_compressed_signal, loss_test, acc_test = eval_RNN_Model(test_loader, time_step, input_size,
+                                       model, num_classes, criterion, "test", path)
+    
+    # anneal learning 
+    scheduler.step(loss_test)
+    
     if acc_train > best_acc_train:
-        best_acc_train = acc_train
-        save_path = os.path.join(path, 'compressed_train_RNN')
-        np.save(save_path, cmp_train)
-
-    cmp_test, _, acc_test = eval_BiRNN(test_set.data, test_set.label,
-                                       model, test_set.num_classes, nll_loss, "test", path)
+        save_path = os.path.join(path, 'compressed_train_GRU')
+        np.save(save_path, train_compressed_signal)
 
     if acc_test > best_acc_test:
-        best_acc_test = acc_test
-        save_path = os.path.join(path, 'compressed_test_RNN')
-        np.save(save_path, cmp_test)
-
+        save_path = os.path.join(path, 'compressed_test_GRU')
+        np.save(save_path, test_compressed_signal)
+    
+    
     is_best = acc_test > best_acc_test
+    best_acc_train = max(acc_train, best_acc_train) 
     best_acc_test = max(acc_test, best_acc_test)
     save_checkpoint({
                     'epoch': epoch + 1,
-                    #'arch': args.arch,
+                    'arch': arch, 
                     'state_dict': model.state_dict(),
                     'best_acc1': best_acc_test,
                     'optimizer' : op.state_dict(),
