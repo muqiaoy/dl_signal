@@ -62,22 +62,24 @@ def train_model(settings):
     model.to(device)
     def train(model, optimizer, criterion):
         epoch_loss = 0.0
-        num_batches = len(training_set) // args.batch_size
+        batch_size = args.batch_size
+        num_batches = len(training_set) // batch_size
         total_batch_size = 0
-        total_aps = 0.0
-        model.train()
         start_time = time.time()
+        shape = training_set.label.transpose(1, 0, 2).shape
+        true_vals = torch.zeros(shape)
+        pred_vals = torch.zeros(shape)
+        model.train()
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
-            cur_batch_size = len(batch_X) 
             model.zero_grad()
             
             # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds, _ = model(batch_X)
+            true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.transpose(1, 0).detach().cpu()
+            pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
             batch_y = batch_y.reshape(-1, batch_y.shape[-1])
             preds = preds.reshape(-1, preds.shape[-1])
-            #print(torch.max(preds))
-            #print(torch.min(preds))
             loss = criterion(preds, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -97,41 +99,37 @@ def train_model(settings):
                 return loss   
             optimizer.step(closure)
             '''
-            batch_size = batch_X.size(1)
             total_batch_size += batch_size
             epoch_loss += loss.item() * batch_size
-            #print("max min warning")
-            #print(torch.max(preds))
-            #print(torch.min(preds))
-            aps = average_precision_score(batch_y.data.cpu().numpy().flatten(), preds.data.cpu().numpy().flatten())
-            aps = np.where(np.isnan(aps), 1, aps) 
-            total_aps += batch_size * aps
-            # print("aps ", aps)
+        aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
+            # aps = np.where(np.isnan(aps), 1, aps) 
         print(sys.argv) 
-        return epoch_loss / len(training_set), total_aps/float(total_batch_size)
+        return epoch_loss / len(training_set), aps
 
     def evaluate(model, criterion):
-        model.eval()
         epoch_loss = 0.0
+        batch_size = args.batch_size
         loader = test_loader
         total_batch_size = 0
-        total_aps = 0.0
+        shape = test_set.label.transpose(1, 0, 2).shape
+        true_vals = torch.zeros(shape)
+        pred_vals = torch.zeros(shape)
+        model.eval()
         with torch.no_grad():
             for i_batch, (batch_X, batch_y) in enumerate(loader):
-                cur_batch_size = len(batch_X)
                 batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
                 preds, _ = model(batch_X)
+                true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.transpose(1, 0).detach().cpu()
+                pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
                 # reshape batch_y and preds to be of size (N, feature_dim) for loss calculation
                 batch_y = batch_y.reshape(-1, batch_y.shape[-1])
                 preds = preds.reshape(-1, preds.shape[-1])
                 loss = criterion(preds, batch_y)
-                batch_size = batch_X.size(1)
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
-                aps = average_precision_score(batch_y.data.cpu().numpy().flatten(), preds.data.cpu().numpy().flatten())
-                aps = np.where(np.isnan(aps), 1, aps)
-                total_aps += batch_size * aps
-        return epoch_loss / len(test_set), total_aps/float(total_batch_size)
+            aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
+            # aps = np.where(np.isnan(aps), 1, aps)
+        return epoch_loss / len(test_set), aps
 
 
 
@@ -139,11 +137,11 @@ def train_model(settings):
         start = time.time() 
 
         train_loss, acc_train = train(model, optimizer, criterion)
-        print('Epoch {:2d} | Train Loss {:5.4f} | Accuracy {:5.4f}'.format(epoch, train_loss, acc_train))
+        print('Epoch {:2d} | Train Loss {:5.4f} | APS {:5.4f}'.format(epoch, train_loss, acc_train))
         test_loss, acc_test = evaluate(model, criterion)
         scheduler.step(test_loss)
         print("-"*50)
-        print('Epoch {:2d} | Test  Loss {:5.4f} | Accuracy {:5.4f}'.format(epoch, test_loss, acc_test))
+        print('Epoch {:2d} | Test  Loss {:5.4f} | APS {:5.4f}'.format(epoch, test_loss, acc_test))
         print("-"*50)
 
         end = time.time()
