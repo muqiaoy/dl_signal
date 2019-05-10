@@ -108,6 +108,7 @@ class TransformerModel(nn.Module):
         x_l = x[:, :, :self.d_l]
         x_a = x[:, :, self.d_l: self.d_l + self.d_a]
         # print(x_a.shape)
+        # assert False
         x_l, x_a = [self.proj_l[i](x_l) for i in range(self.horizons)], [self.proj_a[i](x_a) for i in range(self.horizons)]
 
         # Pass the input through individual transformers

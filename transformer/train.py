@@ -76,10 +76,11 @@ def train_model(settings):
             # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds, _ = model(batch_X)
-            true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.transpose(1, 0).detach().cpu()
+            batch_y = batch_y.transpose(1, 0)
+            true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
             pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
-            batch_y = batch_y.reshape(-1, batch_y.shape[-1])
-            preds = preds.reshape(-1, preds.shape[-1])
+            # batch_y = batch_y.reshape(-1, batch_y.shape[-1])
+            # preds = preds.reshape(-1, preds.shape[-1])
             loss = criterion(preds, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -119,11 +120,12 @@ def train_model(settings):
             for i_batch, (batch_X, batch_y) in enumerate(loader):
                 batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
                 preds, _ = model(batch_X)
-                true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.transpose(1, 0).detach().cpu()
+                batch_y = batch_y.transpose(1, 0)
+                true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
                 pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
                 # reshape batch_y and preds to be of size (N, feature_dim) for loss calculation
-                batch_y = batch_y.reshape(-1, batch_y.shape[-1])
-                preds = preds.reshape(-1, preds.shape[-1])
+                # batch_y = batch_y.reshape(-1, batch_y.shape[-1])
+                # preds = preds.reshape(-1, preds.shape[-1])
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
