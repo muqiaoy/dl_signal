@@ -73,11 +73,11 @@ for i in range(len(test_data)):
     print(i)
     X,Y = data[test_data[i]]
     print((len(X)-fs-window_size)/stride_test/k_test)
-    for p in range(int((len(X)-fs-window_size)/stride_test/k_test)):
+    for p in range(int((len(X)-window_size)/stride_test/k_test)):
         Xtest = np.empty([k_test,d,2])
         Ytest = np.zeros([k_test,m])
         for j in range(k_test):
-            s = fs+j*stride_test+p*k_test*stride_test# start from one second to give us some wiggle room for larger segments
+            s = j*stride_test+p*k_test*stride_test# start from one second to give us some wiggle room for larger segments
             X_fft = fft(X[s:s+window_size])
             Xtest[j, :, 0] = X_fft[0:d].real
             Xtest[j, :, 1] = X_fft[0:d].imag           

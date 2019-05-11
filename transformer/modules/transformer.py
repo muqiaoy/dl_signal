@@ -104,8 +104,8 @@ class TransformerEncoderLayer(nn.Module):
             embed_dim=self.embed_dim,
             num_heads=self.num_heads,
             attn_dropout=attn_dropout,
-            add_bias_kv=False, 
-            add_zero_attn=False
+            add_bias_kv=True, 
+            add_zero_attn=True
         )
         self.attn_mask = attn_mask
         self.crossmodal = True

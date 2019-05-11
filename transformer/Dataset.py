@@ -5,6 +5,46 @@ from sklearn.preprocessing import scale
 from torch.utils.data import Dataset, DataLoader
 import shutil 
 import math
+from scipy import fft
+
+class MusicNet(Dataset):
+    def __init__(self, root_dir, time_step, window_size, stride, length, train=True, seed=1234):
+        self.root_dir = root_dir
+        self.time_step = time_step
+        self.length = length
+        self.train = train
+        self.rng = np.random.RandomState(seed)
+
+        self.rawdata = np.load(open(os.path.join(root_dir, "musicnet_11khz.npz"), 'rb'), encoding='latin1')
+        self.test_data = ['2303','2382','1819']
+        self.train_data = [f for f in self.rawdata.files if f not in self.test_data]
+        self.window_size = window_size
+        self.num_classes = 84
+        self.stride = stride
+        self.start = self.window_size // 2
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+        if self.train:
+            file = np.random.choice(self.train_data)
+        else:
+            file = np.random.choice(self.test_data)
+        X, Y = self.rawdata[file]
+        data = np.zeros((self.time_step, self.window_size, 2))
+        label = np.zeros((self.time_step, self.num_classes))
+        s = self.rng.randint(self.start, len(X) - self.start - self.window_size * self.time_step)
+        for t in range(self.time_step):
+            s += self.stride
+            X_fft = fft(X[s - self.start:s + self.start])
+            data[t, :, 0] = X_fft.real
+            data[t, :, 1] = X_fft.imag
+            for l in Y[s]:
+                if l.data[1] >= self.num_classes:
+                    continue
+                label[t, l.data[1]] = 1
+        return data, label
 
 
 class SignalDataset_iq(Dataset):

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import sys
-from Dataset import SignalDataset_iq
+from Dataset import SignalDataset_iq, MusicNet
 import argparse
 from model import *
 import torch.optim as optim
@@ -23,7 +23,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def train_transformer():
-    model = TransformerModel(ntokens=10000,        # TODO: wait for Paul's data
+    model = TransformerModel(ntokens=10000,
                              time_step=args.time_step,
                              input_dims=args.modal_lengths,
                              hidden_size=args.hidden_size,
@@ -67,6 +67,7 @@ def train_model(settings):
         total_batch_size = 0
         start_time = time.time()
         shape = training_set.label.transpose(1, 0, 2).shape
+        # shape = (args.time_step, args.train_size, test_set.num_classes)
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.train()
@@ -79,8 +80,6 @@ def train_model(settings):
             batch_y = batch_y.transpose(1, 0)
             true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
             pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
-            # batch_y = batch_y.reshape(-1, batch_y.shape[-1])
-            # preds = preds.reshape(-1, preds.shape[-1])
             loss = criterion(preds, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -123,9 +122,6 @@ def train_model(settings):
                 batch_y = batch_y.transpose(1, 0)
                 true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
                 pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
-                # reshape batch_y and preds to be of size (N, feature_dim) for loss calculation
-                # batch_y = batch_y.reshape(-1, batch_y.shape[-1])
-                # preds = preds.reshape(-1, preds.shape[-1])
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
@@ -193,6 +189,8 @@ parser.add_argument('--optim', type=str, default='SGD',
                     help='optimizer to use (default: SGD)')
 parser.add_argument('--hidden_size', type=int, default=2000,
                     help='hidden_size in transformer (default: 2000)')
+parser.add_argument('--train_size', type=int, default=20000,
+                    help='hidden_size in transformer (default: 2000)')
 # For distributed
 #parser.add_argument("--local_rank", type=int)
 args = parser.parse_args()
@@ -216,6 +214,8 @@ print("Start loading the data....")
     
 training_set = SignalDataset_iq(args.dataset, args.time_step, train=True)
 test_set = SignalDataset_iq(args.dataset, args.time_step, train=False)
+# training_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], stride=512, length=args.train_size, train=True)
+# test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
 
 print("Finish loading the data....")
 
