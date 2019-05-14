@@ -116,10 +116,10 @@ class TransformerEncoderLayer(nn.Module):
         self.res_dropout = res_dropout
         self.normalize_before = True
 
-        #self.fc1_A = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
-        #self.fc2_A = Linear(8*self.embed_dim, self.embed_dim)
-        #self.fc1_B = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
-        #self.fc2_B = Linear(8*self.embed_dim, self.embed_dim)
+        self.fc1_A = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc2_A = Linear(8*self.embed_dim, self.embed_dim)
+        self.fc1_B = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc2_B = Linear(8*self.embed_dim, self.embed_dim)
 
         self.layer_norms_A = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
         self.layer_norms_B = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])

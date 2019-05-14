@@ -16,7 +16,7 @@ import torch.utils
 from sklearn.metrics import confusion_matrix
 import itertools
 from utils import get_meta, get_len, save_checkpoint, count_parameters
-from utils import SignalDataset_iq_raw
+from utils import SignalDataset_iq
 from models import Encoder_LSTM, Decoder_LSTM, Seq2Seq, eval_Seq2Seq
 from models import eval_RNN_Model 
 import argparse
@@ -77,10 +77,10 @@ total_time_step = src_time_step + trg_time_step
 print("Start loading data") 
 start = time.time()
 # load data
-training_set = SignalDataset_iq_raw(path, time_step=total_time_step, train=True)
+training_set = SignalDataset_iq(path, time_step=total_time_step, train=True)
 train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 
-test_set = SignalDataset_iq_raw(path, time_step=total_time_step, train=False)
+test_set = SignalDataset_iq(path, time_step=total_time_step, train=False)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
 end = time.time()

@@ -1,8 +1,14 @@
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir) 
+
 import torch
 from torch import nn
 import torch.nn.functional as F
 import numpy as np
-from modules.transformer import TransformerEncoder
+from modules.transformer import TransformerEncoder, TransformerDecoder
+from utils import count_parameters
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -78,6 +84,7 @@ class TransformerModel(nn.Module):
         
         # Transformer networks
         self.trans = nn.ModuleList([self.get_network() for i in range(self.horizons)])
+        print("Encoder Model size: {0}".format(count_parameters(self.trans)))
             
         # Projection layers
         self.proj_l = nn.ModuleList([nn.Linear(self.d_l, self.orig_d_l) for i in range(self.horizons)])

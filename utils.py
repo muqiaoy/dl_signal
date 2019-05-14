@@ -88,6 +88,9 @@ class SignalDataset(Dataset):
         
         return data, label
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
 class SignalDataset_iq(Dataset):
     """Signal Dataset"""
     

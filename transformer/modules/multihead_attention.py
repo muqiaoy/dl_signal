@@ -134,7 +134,7 @@ class MultiheadAttention(nn.Module):
 
         # extending k, v by another time step at the end, (bsz * num_heads, 1, head_dim) of zeros 
         if self.add_zero_attn:
-            print("< self.add_zero_attn > ") 
+            # print("< self.add_zero_attn > ") 
             # print("k.size(): %s" % str(k.size()))
             # print("v.size(): %s" % str(v.size()))
             # k.size(): torch.Size([2048, 31, 4])

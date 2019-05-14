@@ -1,10 +1,11 @@
-import torch
-from torch import nn
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
-from utils import SignalDataset_iq, SignalDataset_music
+
+import torch
+from torch import nn
+from utils import SignalDataset_iq, SignalDataset_music, count_parameters
 import argparse
 from model import *
 import torch.optim as optim
@@ -14,10 +15,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 import os
 import time
-
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 # Should change into only two modalities, instead of three
 def train_transformer():
@@ -202,7 +199,7 @@ parser.add_argument('-f', default='', type=str)
 parser.add_argument('--model', type=str, default='Transformer',
                     help='name of the model to use (Transformer, etc.)')
 parser.add_argument('--data', type=str, default='music')
-parser.add_argument('--dataset', type=str, default='data',
+parser.add_argument('--path', type=str, default='data',
                     help='path for storing the dataset')
 # parser.add_argument('--time_step', type=int, default=20,
 #                     help='number of time step for each sequence')
@@ -217,8 +214,8 @@ parser.add_argument('--res_dropout', type=float, default=0.1,
 parser.add_argument('--nlevels', type=int, default=6,
                     help='number of layers in the network (if applicable) (default: 6)')
 parser.add_argument('--nhorizons', type=int, default=1)
-parser.add_argument('--modal_lengths', nargs='+', type=int, default=[160, 160],
-                    help='lengths of each modality (default: [160, 160])')
+# parser.add_argument('--modal_lengths', nargs='+', type=int, default=[160, 160],
+#                     help='lengths of each modality (default: [160, 160])')
 parser.add_argument('--output_dim', type=int, default=1000,
                     help='dimension of output (default: 1000)')
 parser.add_argument('--num_epochs', type=int, default=200,
@@ -267,12 +264,12 @@ start = time.time()
 print("Start loading the data....")
     
 if args.data == 'iq': 
-    training_set = SignalDataset_iq(args.dataset, time_step=total_time_step, train=True)
-    test_set = SignalDataset_iq(args.dataset, time_step=total_time_step, train=False)
+    training_set = SignalDataset_iq(args.path, time_step=total_time_step, train=True)
+    test_set = SignalDataset_iq(args.path, time_step=total_time_step, train=False)
 else: 
     assert(total_time_step == 128 or total_time_step == 256)
-    training_set = SignalDataset_music(args.dataset, time_step=total_time_step, train=True)
-    test_set = SignalDataset_music(args.dataset, time_step=total_time_step, train=False)
+    training_set = SignalDataset_music(args.path, time_step=total_time_step, train=True)
+    test_set = SignalDataset_music(args.path, time_step=total_time_step, train=False)
 
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
