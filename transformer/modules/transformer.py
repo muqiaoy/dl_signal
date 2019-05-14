@@ -116,10 +116,10 @@ class TransformerEncoderLayer(nn.Module):
         self.res_dropout = res_dropout
         self.normalize_before = True
 
-        self.fc1_A = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_A = Linear(8*self.embed_dim, self.embed_dim)
-        self.fc1_B = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_B = Linear(8*self.embed_dim, self.embed_dim)
+        # self.fc1_A = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        # self.fc2_A = Linear(self.embed_dim, self.embed_dim)
+        # self.fc1_B = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        # self.fc2_B = Linear(self.embed_dim, self.embed_dim)
 
         self.layer_norms_A = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
         self.layer_norms_B = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
@@ -162,36 +162,30 @@ class TransformerEncoderLayer(nn.Module):
 
         x_A = residual_A + x_A
         x_B = residual_B + x_B
+    
         
-        # x_A = self.layer_norms_A[0](x_A)
-        # x_B = self.layer_norms_B[0](x_B)
+        # ##FC Part
+        # residual_A = x_A
+        # residual_B = x_B
         
+        # # FC1
+        # x_A = F.relu(self.fc1_A(x_A))
+        # x_B = F.relu(self.fc1_B(x_B))
+        # x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
+        # x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
         
-        ##FC Part
-        residual_A = x_A
-        residual_B = x_B
-        
-        # FC1
-        #x_A = F.relu(self.fc1_A(x_A))
-        #x_B = F.relu(self.fc1_B(x_B))
-        #x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
-        #x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
-        
-        # FC2
-        #x_A = self.fc2_A(x_A)
-        #x_B = self.fc2_B(x_B)
-
-        x_A = self.layer_norms_A[1](x_A)
-        x_B = self.layer_norms_B[1](x_B)
-
-        x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
-        
-        x_A = residual_A + x_A
-        x_B = residual_B + x_B
+        # # FC2
+        # x_A = self.fc2_A(x_A)
+        # x_B = self.fc2_B(x_B)
 
         # x_A = self.layer_norms_A[1](x_A)
         # x_B = self.layer_norms_B[1](x_B)
+
+        # x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
+        # x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
+        
+        # x_A = residual_A + x_A
+        # x_B = residual_B + x_B
 
         return x_A, x_B
 
@@ -330,10 +324,10 @@ class TransformerDecoderLayer(nn.Module):
             add_zero_attn=False, 
         )
 
-        self.fc1_A = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_A = Linear(8*self.embed_dim, self.embed_dim)
-        self.fc1_B = Linear(self.embed_dim, 8*self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_B = Linear(8*self.embed_dim, self.embed_dim)
+        # self.fc1_A = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        # self.fc2_A = Linear(self.embed_dim, self.embed_dim)
+        # self.fc1_B = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        # self.fc2_B = Linear(self.embed_dim, self.embed_dim)
 
         self.layer_norms_A = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(3)])
         self.layer_norms_B = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(3)])
@@ -409,21 +403,21 @@ class TransformerDecoderLayer(nn.Module):
         x_A += residual_A 
         x_B += residual_B
         
-        residual_A = x_A 
-        residual_B = x_B
+        # residual_A = x_A 
+        # residual_B = x_B
 
-        # FC1
-        x_A = F.relu(self.fc1_A(x_A))
-        x_B = F.relu(self.fc1_B(x_B))
-        x_A = self.fc2_A(x_A)
-        x_B = self.fc2_B(x_B)
-        x_A = self.layer_norms_A[2](x_A)
-        x_B = self.layer_norms_B[2](x_B)
-        x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
+        # # FC1
+        # x_A = F.relu(self.fc1_A(x_A))
+        # x_B = F.relu(self.fc1_B(x_B))
+        # x_A = self.fc2_A(x_A)
+        # x_B = self.fc2_B(x_B)
+        # x_A = self.layer_norms_A[2](x_A)
+        # x_B = self.layer_norms_B[2](x_B)
+        # x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
+        # x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
         
-        x_A += residual_A 
-        x_B += residual_B 
+        # x_A += residual_A 
+        # x_B += residual_B 
 
         return x_A, x_B
 

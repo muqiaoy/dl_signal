@@ -16,7 +16,7 @@ import torch.utils
 from sklearn.metrics import confusion_matrix
 import itertools
 from utils import get_meta, get_len, save_checkpoint, count_parameters
-from utils import SignalDataset_music
+from utils import SignalDataset_iq, SignalDataset_music
 from models import Encoder_LSTM, Decoder_LSTM, Seq2Seq, eval_Seq2Seq
 from models import eval_RNN_Model 
 import argparse
@@ -28,6 +28,7 @@ print(device)
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
 parser.add_argument('--arch', dest='arch', type=str) 
 parser.add_argument('--bidirection', action='store_true')
+parser.add_argument('--data', dest='data', default='iq')
 parser.add_argument('--path', dest='path', type=str)
 parser.add_argument('--batch_size', dest='batch_size', type=int)
 parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200) 
@@ -38,8 +39,8 @@ parser.add_argument('--learning_rate',dest='learning_rate',type=float, default=0
 parser.add_argument('--momentum', dest='momentum', type=float, default=0.0) 
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0) # applicable to: 'nn','gru'
 parser.add_argument('--epoch', type=int, default=200) # applicable to: 'nn','gru'
-parser.add_argument('--src_time_step', type=int, default=128)
-parser.add_argument('--trg_time_step', type=int, default=128)
+parser.add_argument('--src_time_step', type=int, default=30)
+parser.add_argument('--trg_time_step', type=int, default=20)
 # parser.add_argument('--input_size', type=int, default=160) # applicable to: 'nn','gru'
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -48,7 +49,11 @@ args = parser.parse_args()
 print(args)
 
 # input_size calculated based on src_time_step and trg_time_step 
-input_size = 4096 
+if args.data == 'iq': 
+    input_size = int(3200 / (args.src_time_step + args.trg_time_step))
+elif args.data == 'music':
+    input_size = 4096 
+
 params_dataloader = {
     'batch_size' : int(args.batch_size),
     'shuffle'    : True,
@@ -74,15 +79,20 @@ fc_hidden_size = args.fc_hidden_size
 arch = args.arch
 
 total_time_step = src_time_step + trg_time_step 
-assert(total_time_step == 128 or total_time_step == 256) 
+if args.data == 'music': 
+    assert(total_time_step == 256)
 
 print("Start loading data") 
 start = time.time()
 # load data
-training_set = SignalDataset_music(path, time_step=total_time_step, train=True)
-train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
+if args.data == 'iq': 
+    training_set = SignalDataset_iq(path, time_step=total_time_step, train=True)
+    test_set = SignalDataset_iq(path, time_step=total_time_step, train=False)
+elif args.data == 'music': 
+    training_set = SignalDataset_music(path, time_step=total_time_step, train=True)
+    test_set = SignalDataset_music(path, time_step=total_time_step, train=False)
 
-test_set = SignalDataset_music(path, time_step=total_time_step, train=False)
+train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
 end = time.time()
@@ -138,8 +148,8 @@ best_acc_train = -1
 best_acc_test = -1
 
 
-# _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device) 
-# loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device) 
+_ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device) 
+loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device) 
 
 
 for epoch in range(args.epoch):
@@ -148,12 +158,12 @@ for epoch in range(args.epoch):
     print("Epoch %d" % epoch)
 
     model.train()
-    for data_batched, label_batched in train_loader:
+    for data_batched, _ in train_loader:
         # data_batched: bs, ts, feature_dim 
         cur_batch_size = len(data_batched) 
 
-        # print("data_batched.shape")
-        # print(data_batched.shape) 
+        print("data_batched.shape")
+        print(data_batched.shape) 
         # print("label_batched.shape")
         # print(label_batched.shape)
 

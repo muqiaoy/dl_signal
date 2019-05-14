@@ -29,7 +29,7 @@ def train_transformer():
                              input_dims=[input_dim, input_dim],
                              # proj_dims=args.modal_lengths,
                              hidden_size=args.hidden_size,
-                             output_dim=args.output_dim,
+                             # output_dim=args.output_dim,
                              num_heads=args.num_heads,
                              attn_dropout=args.attn_dropout,
                              relu_dropout=args.relu_dropout,
@@ -211,8 +211,8 @@ parser.add_argument('--nlevels', type=int, default=6,
 parser.add_argument('--nhorizons', type=int, default=1)
 # parser.add_argument('--modal_lengths', nargs='+', type=int, default=[160, 160],
 #                     help='lengths of each modality (default: [160, 160])')
-parser.add_argument('--output_dim', type=int, default=1000,
-                    help='dimension of output (default: 1000)')
+# parser.add_argument('--output_dim', type=int, default=1000,
+#                     help='dimension of output (default: 1000)')
 parser.add_argument('--num_epochs', type=int, default=200,
                     help='number of epochs (default: 200)')
 parser.add_argument('--num_heads', type=int, default=8,

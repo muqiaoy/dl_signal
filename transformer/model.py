@@ -129,7 +129,7 @@ class TransformerModel(nn.Module):
         return output, h_concat
 
 class TransformerGenerationModel(nn.Module):
-    def __init__(self, ntokens, input_dims, hidden_size, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
+    def __init__(self, ntokens, input_dims, hidden_size, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
         """
         Construct a basic Transfomer model for multimodal tasks.
         

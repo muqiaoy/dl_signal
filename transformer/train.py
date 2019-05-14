@@ -57,7 +57,7 @@ def train_model(settings):
     optimizer = settings['optimizer']
     criterion = settings['criterion']
     scheduler = settings['scheduler']
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
     model.to(device)
     def train(model, optimizer, criterion):
         epoch_loss = 0.0
@@ -83,21 +83,6 @@ def train_model(settings):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
-            '''
-            # For LBFGS
-            batch_X = batch_X.float().to(device=device)
-            batch_y = batch_y.float().to(device=device)
-            def closure():
-                optimizer.zero_grad()
-                preds, _ = model(batch_X)
-                print(batch_X.shape)
-                batch_y = batch_y.reshape(-1, batch_y.shape[-1])
-                preds = preds.reshape(-1, preds.shape[-1])
-                loss = criterion(preds, batch_y)
-                loss.backward()
-                return loss   
-            optimizer.step(closure)
-            '''
             total_batch_size += batch_size
             epoch_loss += loss.item() * batch_size
         aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
