@@ -15,18 +15,20 @@ from sklearn.preprocessing import scale
 import torch.utils
 from sklearn.metrics import confusion_matrix
 import itertools
-from utils import get_meta, get_len, save_checkpoint
-from transformer.Dataset import SignalDataset_iq
+from utils import get_meta, get_len, save_checkpoint, count_parameters
+from utils import SignalDataset_iq
 from models import RNN, GRU, LSTM
 from models import eval_RNN_Model 
 import argparse
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
 
 # parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
 parser.add_argument('--arch', dest='arch', type=str) 
-parser.add_argument('--path', dest='path', type=str)
-parser.add_argument('--batch_size', dest='batch_size', type=int, default=256)
+parser.add_argument('--bidirection', action='store_true')
+parser.add_argument('--path', dest='path', type=str, default='/projects/rsalakhugroup/datasets/dl_sginal_datasets/iq/')
+parser.add_argument('--batch_size', dest='batch_size', type=int)
 parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200) 
 parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200) 
 parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) 
@@ -41,6 +43,8 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 
 args = parser.parse_args()
+print(args)
+
 params_dataloader = {
     'batch_size' : int(args.batch_size),
     'shuffle'    : True,
@@ -50,9 +54,10 @@ params_dataloader = {
 params_model = {
     'input_size' : int(args.input_size),
     'hidden_size': int(args.hidden_size),
-    # 'fc_hidden_size': int(args.fc_hidden_size),
+    'fc_hidden_size': int(args.fc_hidden_size),
     'num_layers' : int(args.num_layers),
-    'dropout'    : float(args.dropout)
+    'dropout'    : float(args.dropout),
+    'bidirectional': args.bidirection
 }
 params_op = {
     'lr'          : float(args.learning_rate),
@@ -85,6 +90,8 @@ elif arch == "lstm":
 else: 
     raise Exception("Only 'rnn', 'gru', and 'lstm' are available model options.") 
 
+print("Model size: {0}".format(count_parameters(model)))
+
 criterion = nn.NLLLoss()
 op = torch.optim.SGD(model.parameters(), **params_op)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -114,6 +121,10 @@ for epoch in range(args.epoch):
     model.train()
     for data_batched, label_batched in train_loader:
         cur_batch_size = len(data_batched) 
+        # print(data_batched.shape)
+        # print(cur_batch_size) 
+        # print(time_step) 
+        # print(input_size)
         data_batched = data_batched.reshape(cur_batch_size, time_step, input_size) # (batch_size, feature_dim) -> (batch_size, time_step, input_size) 
 
 
@@ -156,6 +167,5 @@ for epoch in range(args.epoch):
                     'best_acc1': best_acc_test,
                     'optimizer' : op.state_dict(),
                     }, is_best)
-
 
 

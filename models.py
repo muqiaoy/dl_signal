@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 import itertools
 import argparse
-from sklearn.metrics import average_precision_score
+import random
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 '''
@@ -21,19 +21,18 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
 
 class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers=1, dropout=0.0):
+    def __init__(self, input_size, hidden_size, fc_hidden_size, output_size, bidirectional, num_layers=1, dropout=0.0):
         super(RNN, self).__init__()
         self.rnn = nn.RNN(
                           input_size=input_size,
                           hidden_size=hidden_size,
                           num_layers=num_layers,
                           batch_first=True, 
-                          bidirectional=False,
+                          bidirectional=bidirectional, 
                           dropout=dropout
                           )
         
         # self.out = nn.Linear(hidden_size, output_size)
-        fc_hidden_size = 200
         self.fc1 = nn.Linear(hidden_size, fc_hidden_size) 
         self.fc2 = nn.Linear(fc_hidden_size, output_size) 
     
@@ -49,15 +48,16 @@ class RNN(nn.Module):
 
         return r_out, nn.functional.log_softmax(last_layer_output, dim=1)
 
+
 class GRU(nn.Module):
-    def __init__(self, input_size, hidden_size, fc_hidden_size, output_size, num_layers=1, dropout=0.0):
+    def __init__(self, input_size, hidden_size, fc_hidden_size, output_size, bidirectional, num_layers=1, dropout=0.0):
         super(GRU, self).__init__()
         self.gru = nn.GRU(
                           input_size=input_size,
                           hidden_size=hidden_size,
                           num_layers=num_layers,
                           batch_first=True,
-                          bidirectional=False,
+                          bidirectional=bidirectional, 
                           dropout=dropout
                           )
                           
@@ -84,14 +84,14 @@ class GRU(nn.Module):
 
 
 class LSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, fc_hidden_size, output_size, num_layers=1, dropout=0.0):
+    def __init__(self, input_size, hidden_size, fc_hidden_size, output_size, bidirectional, num_layers=1, dropout=0.0):
         super(LSTM, self).__init__()
         self.rnn = nn.LSTM(
                           input_size=input_size,
                           hidden_size=hidden_size,
                           num_layers=num_layers,
                           batch_first=True,
-                          bidirectional=False,
+                          bidirectional=bidirectional,
                           dropout=dropout
                           )
                            
@@ -149,71 +149,35 @@ def eval_RNN_Model(data_loader, time_step, input_size, model, num_classes, loss_
     return None, total_loss, acc
 
 
-# class FNN(nn.Module):
-#     def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
-#         super(FNN, self).__init__()
-#         self.fc1 = nn.Linear(input_size, hidden_size[0])
-#         self.bn1 = nn.BatchNorm1d(hidden_size[0])
-
-#         self.num_hidden = len(hidden_size)
-#         self.non_linear = nn.ReLU()
-#         self.hidden = nn.ModuleList()
-#         self.bn = nn.ModuleList()
-#         self.dropout = nn.Dropout(dropout)
-
-#         for i in range(self.num_hidden - 1):
-#             self.hidden.append(nn.Linear(hidden_size[i], hidden_size[i+1]))
-#             self.bn.append(nn.BatchNorm1d(hidden_size[i+1]))
-#         self.fc2 = nn.Linear(hidden_size[self.num_hidden - 1], output_size)
-    
-#     def forward(self, x):
-#         global device
-#         var_x = x.to(device=device) #(100, 20, 160)
-#         logitis = self.dropout(self.non_linear(self.bn1(self.fc1(var_x))))
-#         for i in range(self.num_hidden - 1):
-#             logitis = self.dropout(self.non_linear(self.bn[i](self.hidden[i](logitis))))
-#         compressed_signal = logitis
-#         logitis = self.fc2(logitis)
-#         return compressed_signal, nn.functional.log_softmax(logitis, dim=1)
 class FNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
-        self.layer = nn.Sequential(
-            nn.Conv1d(input_size, 64, 7, stride=3),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
+        super(FNN, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size[0])
+        self.bn1 = nn.BatchNorm1d(hidden_size[0])
 
-            nn.Conv1d(64, 64, 3, stride=2),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
+        self.num_hidden = len(hidden_size)
+        self.non_linear = nn.ReLU()
+        self.hidden = nn.ModuleList()
+        self.bn = nn.ModuleList()
+        self.dropout = nn.Dropout(dropout)
 
-            nn.Conv1d(64, 128, 3, stride=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(128, 128, 3, stride=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(128, 256, 3, stride=1),
-            nn.ReLU(),
-            nn.Conv1d(256, 256, 3, stride=1),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Linear(intput_size, 2048),
-            nn.ReLU(),
-            nn.Linear(2048, output_size),
-            nn.Sigmoid())
+        for i in range(self.num_hidden - 1):
+            self.hidden.append(nn.Linear(hidden_size[i], hidden_size[i+1]))
+            self.bn.append(nn.BatchNorm1d(hidden_size[i+1]))
+        self.fc2 = nn.Linear(hidden_size[self.num_hidden - 1], output_size)
+    
     def forward(self, x):
-        return self.layer(x)
+        global device
+        var_x = x.to(device=device) #(100, 20, 160)
+        logitis = self.dropout(self.non_linear(self.bn1(self.fc1(var_x))))
+        for i in range(self.num_hidden - 1):
+            logitis = self.dropout(self.non_linear(self.bn[i](self.hidden[i](logitis))))
+        compressed_signal = logitis
+        logitis = self.fc2(logitis)
+        return compressed_signal, nn.functional.log_softmax(logitis, dim=1)
 
 class FNN_complex(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, non_linear='relu', dropout=0.0):
+    def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
         super(FNN_complex, self).__init__()
         self.num_hidden = len(hidden_size)
         self.non_linear = nn.ReLU()
@@ -252,13 +216,11 @@ class FNN_complex(nn.Module):
         logitis = logitis.reshape(logitis.shape[0],-1,2)
         var_x = logitis[:,:,0].to(device=device) 
         var_y = logitis[:,:,1].to(device=device)
-#         logitis = self.non_linear(torch.cat((self.A2(var_x)-self.B2(var_y), self.A2(var_y)+self.B2(var_x)),1) + self.biases[self.num_hidden].to(device=device))
-        logitis = torch.cat((self.A2(var_x)-self.B2(var_y), self.A2(var_y)+self.B2(var_x)),1) + self.biases[self.num_hidden].to(device=device)
-        # no sigmoid because of BCEwithLogits loss
-        return compressed_signal, logitis
+        logitis = self.non_linear(torch.cat((self.A2(var_x)-self.B2(var_y), self.A2(var_y)+self.B2(var_x)),1) + self.biases[self.num_hidden].to(device=device))
+        return compressed_signal, nn.functional.log_softmax(logitis, dim=1)
 
 class FNN_crelu(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, non_linear='relu', dropout=0.0):
+    def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
         super(FNN_crelu, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -303,6 +265,7 @@ class FNN_crelu(nn.Module):
         logitis = torch.cat((up, down), dim=1) 
         logitis += self.fc1_b
         logitis = self.dropout(self.non_linear(self.bn1(logitis)))
+
         for i in range(self.num_hidden - 1):
             real_input = logitis[:, :self.hidden_size[i]//2]
             imag_input = logitis[:, self.hidden_size[i]//2:]
@@ -321,8 +284,9 @@ class FNN_crelu(nn.Module):
         down = self.fc2_w_imag(var_real_input) +  self.fc2_w_real(var_imag_input)
         logitis = torch.cat((up, down), dim=1) 
         logitis += self.fc2_b 
-        # no sigmoid since BCEwithLogits loss
-        return compressed_signal, logitis
+        logitis = self.non_linear(logitis)
+
+        return compressed_signal, nn.functional.log_softmax(logitis, dim=1)
 
 
 
@@ -332,12 +296,185 @@ def eval_FNN(data, label, model, num_classes, loss_func, name, path):
     with torch.no_grad():
         model.eval()
         
-        data  = torch.from_numpy(data).float().to(device=device)
-        label = torch.from_numpy(label).float().to(device=device)  # -1
+        data = torch.from_numpy(data).float().to(device=device)
+        true_label = np.argmax(label, axis=1)
+        label = torch.from_numpy(true_label).long().view(-1).to(device=device)  # -1
         compressed_signal, output = model(data)
-        if name == "test":
-            np.save("output.npy", output.detach().cpu().numpy())
+        output = output.view(-1, num_classes)
         l = loss_func(output, label).item()
-        aps = average_precision_score(label.data.cpu().numpy().flatten(), output.data.cpu().numpy().flatten())
-        print("%s loss %f and average precision score %f " % (name, l, aps))
-    return compressed_signal, l, aps
+        pred = np.argmax(output.data.cpu().numpy(), axis=1)
+        acc = np.mean(pred == true_label.reshape(-1))
+        print("%s loss %f and acc %f " % (name, l, acc))
+        
+        #Confusion Matrix Calculator
+        cnf_matrix = confusion_matrix(true_label.reshape(-1), pred)
+        
+        #Normalize Confusion Matrix
+        cnf_matrix = cnf_matrix.astype('float') / cnf_matrix.sum(axis=1)[:, np.newaxis]
+        
+        save_path = os.path.join(path,'confusion_matrix_' + name)
+        np.save(save_path, cnf_matrix)
+    return compressed_signal, l, acc
+
+
+class Encoder_LSTM(nn.Module):
+    def __init__(self, input_dim, hid_dim, n_layers, dropout):
+        super().__init__()
+        
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.n_layers = n_layers
+        self.dropout = dropout
+        
+        
+        self.lstm = nn.LSTM(input_dim, hid_dim, n_layers, dropout = dropout)
+        
+    def forward(self, src):
+        
+        #src = [src sent len, batch size, input_dim]
+        outputs, (hidden, cell) = self.lstm(src)
+        
+        #outputs = [src sent len, batch size, hid dim * n directions]
+        #hidden = [n layers * n directions, batch size, hid dim]
+        #cell = [n layers * n directions, batch size, hid dim]
+        
+        #outputs are always from the top hidden layer, so included in hidden 
+        
+        return hidden, cell
+
+class Decoder_LSTM(nn.Module):
+    def __init__(self, input_dim, hid_dim, n_layers, fc_hidden_dim, dropout):
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = input_dim
+        self.n_layers = n_layers
+        self.fc_hidden_dim = fc_hidden_dim 
+        self.dropout = dropout
+
+        # assert input_dim == output_dim \
+        #     "Decoder nust have smae input and output dimensions"
+    
+        self.lstm = nn.LSTM(input_dim, hid_dim, n_layers, dropout = dropout)
+        
+        # self.out = nn.Linear(hid_dim, self.output_dim)
+        self.fc1 = nn.Linear(self.hid_dim, self.fc_hidden_dim) 
+        self.fc2 = nn.Linear(self.fc_hidden_dim, self.output_dim) 
+        
+    def forward(self, input, hidden, cell):
+        
+        #hidden = [n layers * n directions, batch size, hid dim]
+        #cell = [n layers * n directions, batch size, hid dim]
+        
+        #n directions in the decoder will both always be 1, therefore:
+        #hidden = [n layers, batch size, hid dim]
+        #context = [n layers, batch size, hid dim]
+        
+        input = input.unsqueeze(0) # inserting a new dimension to be seq len 
+    
+        # print("input.shape")
+        # print(input.shape)
+
+        #input = [1, batch size, input_dim]
+        output, (hidden, cell) = self.lstm(input, (hidden, cell))
+        
+        #output = [sent len, batch size, hid dim * n directions]
+        #hidden = [n layers * n directions, batch size, hid dim]
+        #cell = [n layers * n directions, batch size, hid dim]
+        
+        #sent len and n directions will always be 1 in the decoder, therefore:
+        #output = [1, batch size, hid dim]
+        #hidden = [n layers, batch size, hid dim]
+        #cell = [n layers, batch size, hid dim]
+        
+        # print("output.shape")
+        # print(output.shape)
+
+        # prediction = self.out(output.squeeze(0)) # unsqueezE: [1, batch size, hid dim] -> [batch size, hid dim]
+        prediction = self.fc2(F.relu(self.fc1(output.squeeze(0))))
+        
+        #prediction = [batch size, output dim]
+        # print("perdiction.shape")
+        # print(prediction.shape)
+        return prediction, hidden, cell
+
+
+class Seq2Seq(nn.Module):
+    def __init__(self, encoder, decoder, device):
+        super().__init__()
+        
+        self.encoder = encoder
+        self.decoder = decoder
+        self.device = device
+        
+        assert encoder.hid_dim == decoder.hid_dim, \
+            "Hidden dimensions of encoder and decoder must be equal!"
+        assert encoder.n_layers == decoder.n_layers, \
+            "Encoder and decoder must have equal number of layers!"
+        
+    def forward(self, src, trg, teacher_forcing_ratio=0.0):
+        
+        #src = [src sent len, batch size, src input size]
+        #trg = [trg sent len, batch size, trg input size] 
+        #teacher_forcing_ratio is probability to use teacher forcing
+        #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
+        
+        batch_size = trg.shape[1]
+        max_len = trg.shape[0]
+        trg_input_size = trg.shape[2] 
+        trg_output_dim = self.decoder.output_dim
+        
+        #tensor to store decoder outputs
+        outputs = torch.zeros(max_len, batch_size, trg_output_dim).to(self.device)
+        
+        #last hidden state of the encoder is used as the initial hidden state of the decoder
+        hidden, cell = self.encoder(src)
+        
+        #first input to the decoder is the <sos> tokens
+        input = torch.zeros(batch_size, trg_input_size).to(self.device)
+        
+        for t in range(max_len):
+            # print(t)
+            # print(input.shape)
+            output, hidden, cell = self.decoder(input, hidden, cell)   # output: [batch size, output dim]
+            outputs[t] = output                                        # storing ouput at: 1 -> max_len 
+            teacher_force = random.random() < teacher_forcing_ratio
+            # top1 = output.max(1)[1]
+            # input = (trg[t] if teacher_force else top1)
+            input = (trg[t] if teacher_force else output)              # REQUIRES: ouput_dim = input_dim 
+        
+        return outputs # (seq_len, bs, output_dim)
+
+def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device):
+    # global device
+    with torch.no_grad():
+        model.eval()
+        
+        epoch_loss = 0 
+        for data_batched, _ in data_loader:
+            cur_batch_size = len(data_batched) 
+
+            # src = data_batched[:, 0 : src_time_step * input_size] 
+            # trg = data_batched[:, src_time_step * input_size : ]
+            # src = src.reshape(cur_batch_size, src_time_step, input_size) 
+            # trg = trg.reshape(cur_batch_size, trg_time_step, input_size)
+            src = data_batched[:, 0 : src_time_step, :] 
+            trg = data_batched[:, src_time_step : , :] 
+            src = src.transpose(1, 0) # (ts, bs, input_size)
+            trg = trg.transpose(1, 0) # (ts, bs, input_size)
+            src = src.float().to(device=device)
+            trg = trg.float().to(device=device)
+
+
+            outputs = model(src=src, trg=trg) # (ts, bs, input_size)
+
+            trg = trg.transpose(1, 0).reshape(cur_batch_size, -1)
+            outputs = outputs.transpose(1, 0).reshape(cur_batch_size, -1)
+
+            loss = criterion(outputs, trg)
+            epoch_loss += loss 
+
+        avg_loss = epoch_loss / float(len(data_loader))
+        print("%s loss %f" % (name, avg_loss))
+    return avg_loss 

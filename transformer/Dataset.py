@@ -63,8 +63,8 @@ class SignalDataset_iq(Dataset):
             self.data = np.load(os.path.join(root_dir, "music_train_x_%d.npy" % (self.time_step)))
             self.label = np.load(os.path.join(root_dir, "music_train_y_%d.npy" % (self.time_step)))
         else:
-            self.data = np.load(os.path.join(root_dir, "music_test_x_%d.npy" % (self.time_step)))
-            self.label = np.load(os.path.join(root_dir, "music_test_y_%d.npy" % (self.time_step)))
+            self.data = np.load(os.path.join(root_dir, "music_test_x_%d_samestride.npy" % (self.time_step)))
+            self.label = np.load(os.path.join(root_dir, "music_test_y_%d_samestride.npy" % (self.time_step)))
         self.real = self.data[:, :, :, 0]
         print("real", self.real.shape)
         # (batch, time_step, feature_dim)

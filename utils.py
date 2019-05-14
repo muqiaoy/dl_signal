@@ -91,46 +91,75 @@ class SignalDataset(Dataset):
 class SignalDataset_iq(Dataset):
     """Signal Dataset"""
     
-    def __init__(self, root_dir, train=True, transform=None):
+    def __init__(self, root_dir, time_step, train=True, transform=None):
         self.root_dir = root_dir
         self.train = train
         self.data = None
         self.label = None
-        #self.len = get_len(root_dir, train)
-        
+        self.real = None
+        self.imag = None
+
         if train:
             self.data = np.load(os.path.join(root_dir, "iq_train_data.npy"))
-            self.label = np.load(os.path.join(root_dir, "iq_train_label.npy"))
+            self.label = np.load(os.path.join(root_dir, "iq_train_label.npy"))        
         else:
             self.data = np.load(os.path.join(root_dir, "iq_test_data.npy"))
             self.label = np.load(os.path.join(root_dir, "iq_test_label.npy"))
-        
-        self.outer_batch_size = self.data.shape[0]
-        self.inner_batch_size = self.data.shape[1]
-        self.original_time_step = self.data.shape[2]
-        self.original_feature_dim = self.data.shape[3]
 
-        self.len = self.outer_batch_size * self.inner_batch_size
-        self.input_size = self.data.shape[-1] * self.data.shape[-2]
+        out_batch, in_batch, _, _ = self.data.shape 
+        self.len = out_batch * in_batch
+        self.data = self.data.reshape(self.len, time_step, -1) 
+
         self.num_classes = self.label.shape[-1]
+        self.label = self.label.reshape(-1, self.num_classes) # (# data, 1)
+        self.label = np.argmax(self.label, axis=1)
 
-        # reshape data for fnn_iq; -1th idx: feature (2)ss, -2th idx: time (1600)
-        self.data = self.data.reshape(-1, self.input_size)  # (# data, feature size = 1600 * 2)
-
-        # normalize data
-        self.data = scale(self.data, axis=0)
-
-        # reshape label 
-        self.label = self.label.reshape(-1, self.num_classes) # (# data, one hot 1000)
-        
     def __len__(self):
         return self.len
     
     def __getitem__(self, idx):
         data = self.data[idx]
         label = self.label[idx]
-        #sample = {'data': data, 'label': label}
         
         return data, label
+
+class SignalDataset_music(Dataset):
+    """Signal Dataset"""
+
+    def __init__(self, root_dir, time_step, train=True, transform=None):
+        self.root_dir = root_dir
+        self.time_step = time_step
+        self.train = train
+        self.data = None
+        self.label = None
+        self.real = None
+        self.imag = None
+
+        if train:
+            self.data = np.load(os.path.join(root_dir, "music_train_x_%d.npy" % (self.time_step)))
+            self.label = np.load(os.path.join(root_dir, "music_train_y_%d.npy" % (self.time_step)))
+        else:
+            self.data = np.load(os.path.join(root_dir, "music_test_x_%d.npy" % (self.time_step)))
+            self.label = np.load(os.path.join(root_dir, "music_test_y_%d.npy" % (self.time_step)))
+        self.real = self.data[:, :, :, 0]
+        print("real", self.real.shape)
+        # (batch, time_step, feature_dim)
+        # Since origianl time step is large, we factor out
+        self.real = self.real.reshape(-1, time_step, self.real.shape[2])
+        self.imag = self.data[:, :, :, 1]
+        self.imag = self.imag.reshape(-1, time_step, self.imag.shape[2])
+        self.len = self.real.shape[0]
+
+        self.num_classes = self.label.shape[-1]
+        self.label = self.label.reshape(self.len, time_step, self.num_classes)
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, idx):
+        data = np.concatenate((self.real[idx], self.imag[idx]), axis = 1)
+        label = self.label[idx]
+
+        return data, label # time_step x 4096, time_step x number of classes
 
 

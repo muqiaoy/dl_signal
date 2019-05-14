@@ -1,7 +1,10 @@
 import torch
 from torch import nn
-import sys
-from Dataset import SignalDataset_iq, MusicNet
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir) 
+from utils import SignalDataset_music
 import argparse
 from model import *
 import torch.optim as optim
@@ -145,81 +148,85 @@ def train_model(settings):
         end = time.time()
         print("time: %d" % (end - start))
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def main():
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-print(sys.argv)
-parser = argparse.ArgumentParser(description='Signal Data Analysis')
-parser.add_argument('-f', default='', type=str)
-parser.add_argument('--model', type=str, default='Transformer',
-                    help='name of the model to use (Transformer, etc.)')
-parser.add_argument('--dataset', type=str, default='data',
-                    help='path for storing the dataset')
-parser.add_argument('--time_step', type=int, default=2048,
-                    help='number of time step for each sequence(default: 2048)')
-parser.add_argument('--attn_dropout', type=float, default=0.0,
-                    help='attention dropout')
-parser.add_argument('--relu_dropout', type=float, default=0.1,
-                    help='relu dropout')
-parser.add_argument('--res_dropout', type=float, default=0.1,
-                    help='residual block dropout')
-parser.add_argument('--nlevels', type=int, default=6,
-                    help='number of layers in the network (if applicable) (default: 6)')
-parser.add_argument('--nhorizons', type=int, default=1)
-parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
-                    help='lengths of each modality (default: [2048, 2048])')
-parser.add_argument('--output_dim', type=int, default=128,
-                    help='dimension of output (default: 128)')
-parser.add_argument('--num_epochs', type=int, default=2000,
-                    help='number of epochs (default: 2000)')
-parser.add_argument('--num_heads', type=int, default=8,
-                    help='number of heads for the transformer network')
-parser.add_argument('--seed', type=int, default=1111,
-                    help='random seed')
-parser.add_argument('--batch_size', type=int, default=1, metavar='N',
-                    help='batch size (default: 1)')
-parser.add_argument('--attn_mask', action='store_true',
-                    help='use attention mask for Transformer (default: False)')
-parser.add_argument('--crossmodal', action='store_false',
-                    help='determine whether use the crossmodal fusion or not (default: True)')
-parser.add_argument('--lr', type=float, default=1e-3,
-                    help='initial learning rate (default: 1e-3)')
-parser.add_argument('--clip', type=float, default=0.35,
-                    help='gradient clip value (default: 0.35)')
-parser.add_argument('--optim', type=str, default='SGD',
-                    help='optimizer to use (default: SGD)')
-parser.add_argument('--hidden_size', type=int, default=2000,
-                    help='hidden_size in transformer (default: 2000)')
-parser.add_argument('--train_size', type=int, default=20000,
-                    help='hidden_size in transformer (default: 2000)')
-# For distributed
-#parser.add_argument("--local_rank", type=int)
-args = parser.parse_args()
+    print(sys.argv)
+    parser = argparse.ArgumentParser(description='Signal Data Analysis')
+    parser.add_argument('-f', default='', type=str)
+    parser.add_argument('--model', type=str, default='Transformer',
+                        help='name of the model to use (Transformer, etc.)')
+    parser.add_argument('--dataset', type=str, default='data',
+                        help='path for storing the dataset')
+    parser.add_argument('--time_step', type=int, default=2048,
+                        help='number of time step for each sequence(default: 2048)')
+    parser.add_argument('--attn_dropout', type=float, default=0.0,
+                        help='attention dropout')
+    parser.add_argument('--relu_dropout', type=float, default=0.1,
+                        help='relu dropout')
+    parser.add_argument('--res_dropout', type=float, default=0.1,
+                        help='residual block dropout')
+    parser.add_argument('--nlevels', type=int, default=6,
+                        help='number of layers in the network (if applicable) (default: 6)')
+    parser.add_argument('--nhorizons', type=int, default=1)
+    parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
+                        help='lengths of each modality (default: [2048, 2048])')
+    parser.add_argument('--output_dim', type=int, default=128,
+                        help='dimension of output (default: 128)')
+    parser.add_argument('--num_epochs', type=int, default=2000,
+                        help='number of epochs (default: 2000)')
+    parser.add_argument('--num_heads', type=int, default=8,
+                        help='number of heads for the transformer network')
+    parser.add_argument('--seed', type=int, default=1111,
+                        help='random seed')
+    parser.add_argument('--batch_size', type=int, default=1, metavar='N',
+                        help='batch size (default: 1)')
+    parser.add_argument('--attn_mask', action='store_true',
+                        help='use attention mask for Transformer (default: False)')
+    parser.add_argument('--crossmodal', action='store_false',
+                        help='determine whether use the crossmodal fusion or not (default: True)')
+    parser.add_argument('--lr', type=float, default=1e-3,
+                        help='initial learning rate (default: 1e-3)')
+    parser.add_argument('--clip', type=float, default=0.35,
+                        help='gradient clip value (default: 0.35)')
+    parser.add_argument('--optim', type=str, default='SGD',
+                        help='optimizer to use (default: SGD)')
+    parser.add_argument('--hidden_size', type=int, default=2000,
+                        help='hidden_size in transformer (default: 2000)')
+    parser.add_argument('--train_size', type=int, default=20000,
+                        help='hidden_size in transformer (default: 2000)')
+    # For distributed
+    #parser.add_argument("--local_rank", type=int)
+    args = parser.parse_args()
 
-torch.manual_seed(args.seed)
-print(args)
+    torch.manual_seed(args.seed)
+    print(args)
 
-# For distributed
-#torch.cuda.set_device(args.local_rank)
-use_cuda = True
+    # For distributed
+    #torch.cuda.set_device(args.local_rank)
+    use_cuda = True
 
-# For distributed
-#torch.distributed.init_process_group(backend='nccl', init_method='env://')
+    # For distributed
+    #torch.distributed.init_process_group(backend='nccl', init_method='env://')
 
-"""
-Data Loading
-"""
+    """
+    Data Loading
+    """
 
-torch.set_default_tensor_type('torch.FloatTensor')
-print("Start loading the data....")
-    
-training_set = SignalDataset_iq(args.dataset, args.time_step, train=True)
-test_set = SignalDataset_iq(args.dataset, args.time_step, train=False)
-# training_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], stride=512, length=args.train_size, train=True)
-# test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
+    torch.set_default_tensor_type('torch.FloatTensor')
+    print("Start loading the data....")
+        
+    training_set = SignalDataset_music(args.dataset, args.time_step, train=True)
+    test_set = SignalDataset_music(args.dataset, args.time_step, train=False)
+    # training_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], stride=512, length=args.train_size, train=True)
+    # test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
 
-print("Finish loading the data....")
+    print("Finish loading the data....")
 
-train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
 
-train_transformer()
+    train_transformer()
+
+if __name__ == '__main__':
+    main()
