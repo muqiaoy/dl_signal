@@ -74,7 +74,6 @@ def train_model(settings):
         
         model.train()
 
-        start_time = time.time()
         for i_batch, (data_batched, _) in enumerate(train_loader):
             cur_batch_size = len(data_batched) 
 
@@ -121,10 +120,6 @@ def train_model(settings):
             # total_correct += (torch.argmax(preds, dim=1)==batch_y).sum()
 
         avg_loss = epoch_loss / float(len(train_loader))
-
-
-        end = time.time()
-        print("time: %d" % (end - start))
 
         return avg_loss
 
