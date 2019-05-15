@@ -202,11 +202,11 @@ torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
     
 if args.data == 'music':
-    training_set = SignalDataset_music(args.path, args.time_step, train=True)
-    test_set = SignalDataset_music(args.path, args.time_step, train=False)
+    training_set = SignalDataset_music(args.path, train=True)
+    test_set = SignalDataset_music(args.path, train=False)
 elif args.data == 'iq':
-    training_set = SignalDataset_iq(args.path, args.time_step, train=True)
-    test_set = SignalDataset_iq(args.path, args.time_step, train=False)
+    training_set = SignalDataset_iq(args.path, train=True)
+    test_set = SignalDataset_iq(args.path, train=False)
 # training_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], stride=512, length=args.train_size, train=True)
 # test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
 
