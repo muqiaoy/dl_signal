@@ -112,14 +112,7 @@ class TransformerModel(nn.Module):
         x = x.reshape(batch_size, -1, self.d_l + self.d_a)
         x_l = x[:, :, :self.d_l]
         x_a = x[:, :, self.d_l: self.d_l + self.d_a]
-        print(x_l.shape)
-        print(x_a.shape)
         x_l, x_a = [self.proj_l[i](x_l) for i in range(self.horizons)], [self.proj_a[i](x_a) for i in range(self.horizons)]
-        print(len(x_l))
-        print(len(x_a))
-        print(len(x_l[0]))
-        print(len(x_l[0][0]))
-        print(len(x_l[0][0][0]))
         # Pass the input through individual transformers
         h_ls_as = [self.trans[i](x_l[i], x_a[i]) for i in range(self.horizons)] 
         h_ls_as_each_catted = [torch.cat([h_ls_as[i][0], h_ls_as[i][1]], dim=-1) for i in range(self.horizons)]

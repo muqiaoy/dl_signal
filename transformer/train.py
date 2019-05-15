@@ -153,7 +153,7 @@ parser.add_argument('--nlevels', type=int, default=6,
 parser.add_argument('--nhorizons', type=int, default=1)
 parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
                     help='lengths of each modality (default: [2048, 2048])')
-parser.add_argument('--embed_dim', type=int, default=100,
+parser.add_argument('--embed_dim', type=int, default=128,
                     help='dimension of real and imag embeddimg before transformer (default: 100)')
 parser.add_argument('--output_dim', type=int, default=128,
                     help='dimension of output (default: 128)')
