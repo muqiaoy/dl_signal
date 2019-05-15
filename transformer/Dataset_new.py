@@ -7,7 +7,7 @@ import shutil
 import math
 import glob
 
-class SignalDataset_iq(Dataset):
+class SignalDataset_Music_low_mem(Dataset):
     """Signal Dataset"""
     
     def __init__(self, root_dir, train):
