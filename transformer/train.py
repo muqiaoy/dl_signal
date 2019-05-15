@@ -26,6 +26,7 @@ def train_transformer():
                              time_step=args.time_step,
                              input_dims=args.modal_lengths,
                              hidden_size=args.hidden_size,
+                             embed_dim=args.embed_dim,
                              output_dim=args.output_dim,
                              num_heads=args.num_heads,
                              attn_dropout=args.attn_dropout,
@@ -57,7 +58,7 @@ def train_model(settings):
     optimizer = settings['optimizer']
     criterion = settings['criterion']
     scheduler = settings['scheduler']
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
     model.to(device)
     def train(model, optimizer, criterion):
         epoch_loss = 0.0
@@ -152,6 +153,8 @@ parser.add_argument('--nlevels', type=int, default=6,
 parser.add_argument('--nhorizons', type=int, default=1)
 parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
                     help='lengths of each modality (default: [2048, 2048])')
+parser.add_argument('--embed_dim', type=int, default=100,
+                    help='dimension of real and imag embeddimg before transformer (default: 100)')
 parser.add_argument('--output_dim', type=int, default=128,
                     help='dimension of output (default: 128)')
 parser.add_argument('--num_epochs', type=int, default=2000,

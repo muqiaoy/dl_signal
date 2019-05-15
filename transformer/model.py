@@ -16,7 +16,7 @@ class Flatten(nn.Module):
         return x
 
 class TransformerModel(nn.Module):
-    def __init__(self, ntokens, time_step, input_dims, hidden_size, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, crossmodal=False):
+    def __init__(self, ntokens, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, crossmodal=False):
         """
         Construct a basic Transfomer model for multimodal tasks.
         
@@ -68,9 +68,9 @@ class TransformerModel(nn.Module):
         [self.orig_d_l, self.orig_d_a] = input_dims
         assert self.orig_d_l == self.orig_d_a
         self.d_l, self.d_a = 1664//2, 1664//2
-
         self.ntokens = ntokens
-        final_out = (self.orig_d_l + self.orig_d_a) *  horizons
+        #final_out = (self.orig_d_l + self.orig_d_a) *  horizons
+        final_out = embed_dim * 2
         h_out = hidden_size
         self.num_heads = num_heads
         self.layers = layers
@@ -79,17 +79,15 @@ class TransformerModel(nn.Module):
         self.relu_dropout = relu_dropout
         self.res_dropout = res_dropout
         self.attn_mask = attn_mask
-
+        self.embed_dim = embed_dim
         self.crossmodal = crossmodal
         
         # Transformer networks
         self.trans = nn.ModuleList([self.get_network() for i in range(self.horizons)])
         print("Encoder Model size: {0}".format(count_parameters(self.trans)))
-            
         # Projection layers
-        self.proj_l = nn.ModuleList([nn.Linear(self.d_l, self.orig_d_l) for i in range(self.horizons)])
-        
-        self.proj_a = nn.ModuleList([nn.Linear(self.d_a, self.orig_d_a) for i in range(self.horizons)])
+        self.proj_l = nn.ModuleList([nn.Linear(self.d_l, self.embed_dim) for i in range(self.horizons)])
+        self.proj_a = nn.ModuleList([nn.Linear(self.d_a, self.embed_dim) for i in range(self.horizons)])
         
         # self.proj = nn.Linear(final_out, final_out) # Not in the diagram 
         self.out_fc1 = nn.Linear(final_out, h_out)
@@ -99,7 +97,7 @@ class TransformerModel(nn.Module):
         self.out_dropout = nn.Dropout(0.5)
     def get_network(self):
         
-        return TransformerEncoder(embed_dim=self.orig_d_l, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
+        return TransformerEncoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
             
     def forward(self, x):
@@ -114,10 +112,14 @@ class TransformerModel(nn.Module):
         x = x.reshape(batch_size, -1, self.d_l + self.d_a)
         x_l = x[:, :, :self.d_l]
         x_a = x[:, :, self.d_l: self.d_l + self.d_a]
-        # print(x_a.shape)
-        # assert False
+        print(x_l.shape)
+        print(x_a.shape)
         x_l, x_a = [self.proj_l[i](x_l) for i in range(self.horizons)], [self.proj_a[i](x_a) for i in range(self.horizons)]
-
+        print(len(x_l))
+        print(len(x_a))
+        print(len(x_l[0]))
+        print(len(x_l[0][0]))
+        print(len(x_l[0][0][0]))
         # Pass the input through individual transformers
         h_ls_as = [self.trans[i](x_l[i], x_a[i]) for i in range(self.horizons)] 
         h_ls_as_each_catted = [torch.cat([h_ls_as[i][0], h_ls_as[i][1]], dim=-1) for i in range(self.horizons)]
