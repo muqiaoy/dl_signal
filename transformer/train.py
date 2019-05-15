@@ -57,7 +57,7 @@ def train_model(settings):
     optimizer = settings['optimizer']
     criterion = settings['criterion']
     scheduler = settings['scheduler']
-    #model = nn.DataParallel(model)
+    model = nn.DataParallel(model)
     model.to(device)
     def train(model, optimizer, criterion):
         epoch_loss = 0.0
