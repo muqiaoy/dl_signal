@@ -73,7 +73,6 @@ def train_model(settings):
         model.train()
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
             model.zero_grad()
-            
             # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds, _ = model(batch_X)
@@ -197,7 +196,7 @@ Data Loading
 
 torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
-    
+start_time = time.time() 
 if args.data == 'music':
     training_set = SignalDataset_music(args.path, args.time_step, train=True)
     test_set = SignalDataset_music(args.path, args.time_step, train=False)
@@ -208,8 +207,6 @@ elif args.data == 'iq':
 # test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
 
 print("Finish loading the data....")
-
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
-
 train_transformer()
