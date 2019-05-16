@@ -119,8 +119,7 @@ class TransformerModel(nn.Module):
         h_concat = torch.cat(h_ls_as_each_catted, dim=-1)
         
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
-        # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stabl
-        output = output.transpose(0,1)
+        # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stable
         return output, h_concat
 
 class TransformerGenerationModel(nn.Module):

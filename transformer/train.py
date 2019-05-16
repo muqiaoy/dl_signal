@@ -66,8 +66,8 @@ def train_model(settings):
         num_batches = len(training_set) // batch_size
         total_batch_size = 0
         start_time = time.time()
-        shape = training_set.label.transpose(1, 0, 2).shape
-        # shape = (args.time_step, args.train_size, test_set.num_classes)
+        shape = training_set.label.shape
+        # shape = (batch_size, args.time_step, test_set.num_classes)
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.train()
@@ -77,9 +77,8 @@ def train_model(settings):
             # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds, _ = model(batch_X)
-            batch_y = batch_y.transpose(1, 0)
-            true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
-            pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
+            true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
+            pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
             loss = criterion(preds, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -96,7 +95,7 @@ def train_model(settings):
         batch_size = args.batch_size
         loader = test_loader
         total_batch_size = 0
-        shape = test_set.label.transpose(1, 0, 2).shape
+        shape = test_set.label.shape
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.eval()
@@ -104,9 +103,8 @@ def train_model(settings):
             for i_batch, (batch_X, batch_y) in enumerate(loader):
                 batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
                 preds, _ = model(batch_X)
-                batch_y = batch_y.transpose(1, 0)
-                true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
-                pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
+                true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
+                pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
