@@ -7,10 +7,10 @@ import shutil
 import math
 import glob
 
-class SignalDataset_Music_low_mem(Dataset):
+class SignalDataset_Music_Low_Mem(Dataset):
     """Signal Dataset"""
     
-    def __init__(self, root_dir, train):
+    def __init__(self, root_dir, time_step,train):
         self.root_dir = root_dir
         self.train = train
         self.len = 0

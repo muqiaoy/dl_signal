@@ -4,8 +4,7 @@ import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
-#from utils import SignalDataset_music, SignalDataset_iq, count_parameters
-from Dataset_new import SignalDataset_Music_low_mem as SignalDataset_music 
+from Dataset_Low_Mem import SignalDataset_Music_Low_Mem as SignalDataset_music
 import argparse
 from model import *
 import torch.optim as optim
@@ -67,20 +66,19 @@ def train_model(settings):
         num_batches = len(training_set) // batch_size
         total_batch_size = 0
         start_time = time.time()
-        shape = training_set.label.transpose(1, 0, 2).shape
-        # shape = (args.time_step, args.train_size, test_set.num_classes)
+        # shape = training_set.label.shape
+        shape = (20376, 128, 128)
+        # shape = (batch_size, args.time_step, test_set.num_classes)
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.train()
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
             model.zero_grad()
-            
             # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds, _ = model(batch_X)
-            batch_y = batch_y.transpose(1, 0)
-            true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
-            pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
+            true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
+            pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
             loss = criterion(preds, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -97,7 +95,8 @@ def train_model(settings):
         batch_size = args.batch_size
         loader = test_loader
         total_batch_size = 0
-        shape = test_set.label.transpose(1, 0, 2).shape
+        # shape = test_set.label.shape
+        shape = (257, 128, 128) 
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.eval()
@@ -105,9 +104,8 @@ def train_model(settings):
             for i_batch, (batch_X, batch_y) in enumerate(loader):
                 batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
                 preds, _ = model(batch_X)
-                batch_y = batch_y.transpose(1, 0)
-                true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
-                pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
+                true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
+                pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
@@ -154,7 +152,7 @@ parser.add_argument('--nlevels', type=int, default=6,
 parser.add_argument('--nhorizons', type=int, default=1)
 parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
                     help='lengths of each modality (default: [2048, 2048])')
-parser.add_argument('--embed_dim', type=int, default=100,
+parser.add_argument('--embed_dim', type=int, default=128,
                     help='dimension of real and imag embeddimg before transformer (default: 100)')
 parser.add_argument('--output_dim', type=int, default=128,
                     help='dimension of output (default: 128)')
@@ -200,19 +198,17 @@ Data Loading
 
 torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
-    
+start_time = time.time() 
 if args.data == 'music':
-    training_set = SignalDataset_music(args.path, train=True)
-    test_set = SignalDataset_music(args.path, train=False)
+    training_set = SignalDataset_music(args.path, args.time_step, train=True)
+    test_set = SignalDataset_music(args.path, args.time_step, train=False)
 elif args.data == 'iq':
-    training_set = SignalDataset_iq(args.path, train=True)
-    test_set = SignalDataset_iq(args.path, train=False)
+    training_set = SignalDataset_iq(args.path, args.time_step, train=True)
+    test_set = SignalDataset_iq(args.path, args.time_step, train=False)
 # training_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], stride=512, length=args.train_size, train=True)
 # test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
 
 print("Finish loading the data....")
-
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
-
 train_transformer()
