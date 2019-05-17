@@ -85,8 +85,9 @@ def train_model(settings):
             optimizer.step()
             total_batch_size += batch_size
             epoch_loss += loss.item() * batch_size
-        aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
+        #aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
             # aps = np.where(np.isnan(aps), 1, aps) 
+        aps = 0
         print(sys.argv) 
         return epoch_loss / len(training_set), aps
 

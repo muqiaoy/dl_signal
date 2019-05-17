@@ -76,16 +76,44 @@ def train_model(settings):
         print(time.time()-start)
         start = time.time()
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
-            model.zero_grad()
+            optimizer.zero_grad()
+            print("Zero Grad")
+            print(time.time()-start)
+            start = time.time()
+
             # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
+            print("Data to device")
+            print(time.time()-start)
+            start = time.time()
+
             preds, _ = model(batch_X)
+            print("Fit Model")
+            print(time.time()-start)
+            start = time.time()
+
             true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
             pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
+            print("Record data")
+            print(time.time()-start)
+            start = time.time()
+
             loss = criterion(preds, batch_y)
+            print("Loss calculation")
+            print(time.time()-start)
+            start = time.time()
+
             loss.backward()
+            print("backward")
+            print(time.time()-start)
+            start = time.time()
+
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
+            print("Clip and step")
+            print(time.time()-start)
+            start = time.time()
+
             total_batch_size += batch_size
             epoch_loss += loss.item() * batch_size
         print("End traininh")
