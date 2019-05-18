@@ -4,7 +4,7 @@ import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
-from Dataset_Low_Mem import SignalDataset_Music_Low_Mem as SignalDataset_music
+from utils import SignalDataset_Music_Low_Mem, SignalDataset_Music
 import argparse
 from model import *
 import torch.optim as optim
@@ -67,7 +67,7 @@ def train_model(settings):
         total_batch_size = 0
         start_time = time.time()
         # shape = training_set.label.shape
-        shape = (20376, 128, 128)
+        shape = (training_set.len, args.time_step, args.output_dim)
         # shape = (batch_size, args.time_step, test_set.num_classes)
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
@@ -97,7 +97,7 @@ def train_model(settings):
         loader = test_loader
         total_batch_size = 0
         # shape = test_set.label.shape
-        shape = (257, 128, 128) 
+        shape = (test_set.len, args.time_step, args.output_dim) 
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.eval()
@@ -201,8 +201,8 @@ torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
 start_time = time.time() 
 if args.data == 'music':
-    training_set = SignalDataset_music(args.path, args.time_step, train=True)
-    test_set = SignalDataset_music(args.path, args.time_step, train=False)
+    training_set = SignalDataset_Music_Low_Mem(args.path, args.time_step, train=True)
+    test_set = SignalDataset_Music_Low_Mem(args.path, args.time_step, train=False)
 elif args.data == 'iq':
     training_set = SignalDataset_iq(args.path, args.time_step, train=True)
     test_set = SignalDataset_iq(args.path, args.time_step, train=False)

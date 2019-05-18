@@ -6,42 +6,7 @@ from sklearn.preprocessing import scale
 from torch.utils.data import Dataset, DataLoader
 import shutil 
 from scipy import fft
-
-class MusicNet(Dataset):
-    def __init__(self, root_dir, time_step, window_size, stride, length, num_classes, train=True, seed=1234):
-        self.root_dir = root_dir
-        self.time_step = time_step
-        self.length = length
-        self.train = train
-        self.rng = np.random.RandomState(seed)
-
-        self.rawdata = np.load(open(os.path.join(root_dir, "musicnet_11khz.npz"), 'rb'), encoding='latin1')
-        self.test_data = ['2303','2382','1819']
-        self.train_data = [f for f in self.rawdata.files if f not in self.test_data]
-        self.window_size = window_size
-        self.num_classes = num_classes
-        self.stride = stride
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, idx):
-        if self.train:
-            file = np.random.choice(self.train_data)
-        else:
-            file = np.random.choice(self.test_data)
-        X, Y = self.rawdata[file]
-        data = np.zeros((self.time_step, self.window_size, 2))
-        label = np.zeros((self.time_step, self.num_classes))
-        s = self.rng.randint(self.window_size, len(X) - self.stride * self.time_step - self.window_size)
-        for t in range(self.time_step):
-            s += self.stride
-            X_fft = fft(X[s - self.window_size:s + self.window_size])
-            data[t, :, 0] = X_fft.real
-            data[t, :, 1] = X_fft.imag
-            for l in Y[s]:
-                label[t, l.data[1]] = 1
-        return data, label
+import glob
 
 def get_meta(root_dir):
     """Will write a meta.txt to store sample size of both train and test.
@@ -163,7 +128,7 @@ class SignalDataset_iq(Dataset):
         
         return data, label
 
-class SignalDataset_music(Dataset):
+class SignalDataset_Music(Dataset):
     """Signal Dataset"""
 
     def __init__(self, root_dir, time_step, train=True, transform=None):
@@ -202,4 +167,30 @@ class SignalDataset_music(Dataset):
 
         return data, label # time_step x 4096, time_step x number of classes
 
+
+class SignalDataset_Music_Low_Mem(Dataset):
+    """Signal Dataset"""
+    
+    def __init__(self, root_dir, time_step,train):
+        self.root_dir = root_dir
+        self.train = train
+        self.len = 0
+        if self.train:
+            self.len = len(glob.glob1(root_dir,"*train_x*.npy"))
+        else:
+            self.len = len(glob.glob1(root_dir,"*test_x*.npy"))
+    
+    def __getitem__(self, idx):
+        if self.train:
+            x_path = os.path.join(self.root_dir, "music_train_x_128_{}.npy".format(idx))
+            y_path = os.path.join(self.root_dir, "music_train_y_128_{}.npy".format(idx))
+        else:
+            x_path = os.path.join(self.root_dir, "music_test_x_128_{}.npy".format(idx))
+            y_path = os.path.join(self.root_dir, "music_test_y_128_{}.npy".format(idx))
+        data = np.load(x_path)
+        label = np.load(y_path)
+        return data, label
+    
+    def __len__(self):
+        return self.len
 
