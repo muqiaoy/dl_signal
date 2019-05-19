@@ -35,7 +35,8 @@ def train_transformer():
                              layers=args.nlevels,
                              horizons=args.nhorizons,
                              attn_mask=args.attn_mask,
-                             crossmodal=args.crossmodal)
+                             crossmodal=args.crossmodal,
+                             device=args.cuda_device)
     if use_cuda:
         model = model.cuda()
 
@@ -127,7 +128,6 @@ def train_model(settings):
         end = time.time()
         print("time: %d" % (end - start))
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 print(sys.argv)
 parser = argparse.ArgumentParser(description='Signal Data Analysis')
@@ -174,15 +174,17 @@ parser.add_argument('--optim', type=str, default='SGD',
                     help='optimizer to use (default: SGD)')
 parser.add_argument('--hidden_size', type=int, default=2000,
                     help='hidden_size in transformer (default: 2000)')
-parser.add_argument('--train_size', type=int, default=20000,
-                    help='hidden_size in transformer (default: 2000)')
+parser.add_argument('--cuda_device', type=int, default=0,
+                    help='cuda device to run program on (default: 0)')
+
 # For distributed
 #parser.add_argument("--local_rank", type=int)
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
 print(args)
-
+device = torch.device("cuda:"+str(args.cuda_device) if torch.cuda.is_available() else "cpu")
+print("device:", device)
 # For distributed
 #torch.cuda.set_device(args.local_rank)
 use_cuda = True
@@ -193,7 +195,7 @@ use_cuda = True
 """
 Data Loading
 """
-
+print(torch.cuda.device_count())
 torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
 start_time = time.time() 
