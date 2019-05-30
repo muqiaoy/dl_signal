@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import numpy as np
 from modules.transformer import TransformerEncoder, TransformerDecoder
 from utils import count_parameters
+from conv import Conv1d
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -32,29 +33,29 @@ class TransformerModel(nn.Module):
         """
         super(TransformerModel, self).__init__()
         self.cnn = nn.Sequential(
-            nn.Conv1d(in_channels=2, out_channels=16, kernel_size=6, stride=2),
+            Conv1d(in_channels=2, out_channels=16, kernel_size=6, stride=2),
             nn.BatchNorm1d(16),
             nn.ReLU(),
             nn.MaxPool1d(2, stride=2),
 
-            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
+            Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
             nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.MaxPool1d(2, stride=2),
 
-            nn.Conv1d(32, 64, 3, stride=1),
+            Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
             nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.MaxPool1d(2, stride=2),
 
-            nn.Conv1d(64, 64, 3, stride=1),
+            Conv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
             nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.MaxPool1d(2, stride=2),
 
-            nn.Conv1d(64, 128, 3, stride=1),
+            Conv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
             nn.ReLU(),
-            nn.Conv1d(128, 128, 3, stride=1),
+            Conv1d(in_channels=128, out_channels=128, kernel_size=3, stride=1),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(2, stride=2),
@@ -67,7 +68,9 @@ class TransformerModel(nn.Module):
             )
         [self.orig_d_l, self.orig_d_a] = input_dims
         assert self.orig_d_l == self.orig_d_a
-        self.d_l, self.d_a = 1664//2, 1664//2
+        channels = (((((((((((self.orig_d_l -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
+            -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -3)//1+1 -2)//2+1
+        self.d_l, self.d_a = 128*channels//2, 128*channels//2
         self.ntokens = ntokens
         #final_out = (self.orig_d_l + self.orig_d_a) *  horizons
         final_out = embed_dim * 2
