@@ -128,7 +128,7 @@ class SignalDataset_iq(Dataset):
         
         return data, label
 
-class SignalDataset_Music(Dataset):
+class SignalDataset_music(Dataset):
     """Signal Dataset"""
 
     def __init__(self, root_dir, time_step, train=True, transform=None):
@@ -168,7 +168,7 @@ class SignalDataset_Music(Dataset):
         return data, label # time_step x 4096, time_step x number of classes
 
 
-class SignalDataset_Music_Low_Mem(Dataset):
+class SignalDataset_music_Low_Mem(Dataset):
     """Signal Dataset"""
     
     def __init__(self, root_dir, time_step,train):
