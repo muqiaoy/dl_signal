@@ -43,8 +43,6 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
-    # For Rprop and SparseAdam and LBFGS
-    #optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
     criterion = nn.BCEWithLogitsLoss()
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
     settings = {'model': model,
@@ -59,7 +57,6 @@ def train_model(settings):
     optimizer = settings['optimizer']
     criterion = settings['criterion']
     scheduler = settings['scheduler']
-    #model = nn.DataParallel(model)
     model.to(device)
     def train(model, optimizer, criterion):
         epoch_loss = 0.0
@@ -74,7 +71,6 @@ def train_model(settings):
         model.train()
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
             model.zero_grad()
-            # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds, _ = model(batch_X)
             true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
@@ -86,7 +82,6 @@ def train_model(settings):
             total_batch_size += batch_size
             epoch_loss += loss.item() * batch_size
         aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
-            # aps = np.where(np.isnan(aps), 1, aps) 
         print(sys.argv) 
         return epoch_loss / len(training_set), aps
 
@@ -109,7 +104,6 @@ def train_model(settings):
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
             aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
-            # aps = np.where(np.isnan(aps), 1, aps)
         return epoch_loss / len(test_set), aps
 
 
@@ -177,20 +171,13 @@ parser.add_argument('--hidden_size', type=int, default=2000,
 parser.add_argument('--cuda_device', type=int, default=0,
                     help='cuda device to run program on (default: 0)')
 
-# For distributed
-#parser.add_argument("--local_rank", type=int)
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
 print(args)
 device = torch.device("cuda:"+str(args.cuda_device) if torch.cuda.is_available() else "cpu")
 print("device:", device)
-# For distributed
-#torch.cuda.set_device(args.local_rank)
 use_cuda = True
-
-# For distributed
-#torch.distributed.init_process_group(backend='nccl', init_method='env://')
 
 """
 Data Loading
@@ -205,9 +192,6 @@ if args.data == 'music':
 elif args.data == 'iq':
     training_set = SignalDataset_iq(args.path, args.time_step, train=True)
     test_set = SignalDataset_iq(args.path, args.time_step, train=False)
-# training_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], stride=512, length=args.train_size, train=True)
-# test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
-
 print("Finish loading the data....")
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)

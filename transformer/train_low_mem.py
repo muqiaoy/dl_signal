@@ -175,8 +175,6 @@ parser.add_argument('--optim', type=str, default='SGD',
                     help='optimizer to use (default: SGD)')
 parser.add_argument('--hidden_size', type=int, default=2000,
                     help='hidden_size in transformer (default: 2000)')
-parser.add_argument('--cuda_device', type=int, default=0,
-                    help='cuda device to run program on (default: 0)')
 
 # For distributed
 #parser.add_argument("--local_rank", type=int)
@@ -184,9 +182,7 @@ args = parser.parse_args()
 
 torch.manual_seed(args.seed)
 print(args)
-device = torch.device("cuda:"+str(args.cuda_device) if torch.cuda.is_available() else "cpu")
-print("available device:", torch.cuda.device_count())
-print("current device:", device)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # For distributed
 #torch.cuda.set_device(args.local_rank)
