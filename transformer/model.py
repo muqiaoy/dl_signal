@@ -66,11 +66,11 @@ class TransformerModel(nn.Module):
             # nn.Linear(2048, output_size),
             # nn.Sigmoid()
             )
-        [self.orig_d_l, self.orig_d_a] = input_dims
-        assert self.orig_d_l == self.orig_d_a
-        channels = (((((((((((self.orig_d_l -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
+        [self.orig_d_a, self.orig_d_b] = input_dims
+        assert self.orig_d_a == self.orig_d_b
+        channels = (((((((((((self.orig_d_a -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
             -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -3)//1+1 -2)//2+1
-        self.d_l, self.d_a = 128*channels//2, 128*channels//2
+        self.d_a, self.d_b = 128*channels//2, 128*channels//2
         self.ntokens = ntokens
         #final_out = (self.orig_d_l + self.orig_d_a) *  horizons
         final_out = embed_dim * 2
@@ -89,10 +89,9 @@ class TransformerModel(nn.Module):
         self.trans = nn.ModuleList([self.get_network() for i in range(self.horizons)])
         print("Encoder Model size: {0}".format(count_parameters(self.trans)))
         # Projection layers
-        self.proj_l = nn.ModuleList([nn.Linear(self.d_l, self.embed_dim) for i in range(self.horizons)])
         self.proj_a = nn.ModuleList([nn.Linear(self.d_a, self.embed_dim) for i in range(self.horizons)])
+        self.proj_b = nn.ModuleList([nn.Linear(self.d_b, self.embed_dim) for i in range(self.horizons)])
         
-        # self.proj = nn.Linear(final_out, final_out) # Not in the diagram 
         self.out_fc1 = nn.Linear(final_out, h_out)
         
         self.out_fc2 = nn.Linear(h_out, output_dim)
@@ -108,18 +107,16 @@ class TransformerModel(nn.Module):
         x should have dimension [batch_size, seq_len, n_features] (i.e., N, L, C).
         """
         batch_size = x.shape[0]
-        # print(x.shape)
-        x = x.reshape(-1, 2, self.orig_d_l) # （seq_len, 2, n_features）
+        x = x.reshape(-1, 2, self.orig_d_a) # （seq_len, 2, n_features）
         x = self.cnn(x)
-        # print(x.shape)
-        x = x.reshape(batch_size, -1, self.d_l + self.d_a)
-        x_l = x[:, :, :self.d_l]
-        x_a = x[:, :, self.d_l: self.d_l + self.d_a]
-        x_l, x_a = [self.proj_l[i](x_l) for i in range(self.horizons)], [self.proj_a[i](x_a) for i in range(self.horizons)]
+        x = x.reshape(batch_size, -1, self.d_a + self.d_b)
+        x_a = x[:, :, :self.d_a]
+        x_b = x[:, :, self.d_a: self.d_a + self.d_b]
+        x_a, x_b = [self.proj_a[i](x_a) for i in range(self.horizons)], [self.proj_b[i](x_b) for i in range(self.horizons)]
         # Pass the input through individual transformers
-        h_ls_as = [self.trans[i](x_l[i], x_a[i]) for i in range(self.horizons)] 
-        h_ls_as_each_catted = [torch.cat([h_ls_as[i][0], h_ls_as[i][1]], dim=-1) for i in range(self.horizons)]
-        h_concat = torch.cat(h_ls_as_each_catted, dim=-1)
+        h_as_bs = [self.trans[i](x_a[i], x_b[i]) for i in range(self.horizons)] 
+        h_as_bs_each_catted = [torch.cat([h_as_bs[i][0], h_as_bs[i][1]], dim=-1) for i in range(self.horizons)]
+        h_concat = torch.cat(h_as_bs_each_catted, dim=-1)
         
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
         # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stable

@@ -22,7 +22,6 @@ train_data = [f for f in data.files if f not in test_data]
 index = 0
 # create the train set
 for i in range(len(train_data)):
-    print(i)
     X,Y = data[train_data[i]]
     for p in range(int((len(X)-window_size)/stride/k)):
         Xtrain = np.empty([k,d,2])
@@ -31,14 +30,14 @@ for i in range(len(train_data)):
             s = j*stride+p*k*stride# start from one second to give us some wiggle room for larger segments
             X_fft = fft(X[s:s+window_size])
             Xtrain[j, :, 0] = X_fft[0:d].real
-            Xtrain[j, :, 1] = X_fft[0:d].imag 
+            Xtrain[j, :, 1] = X_fft[0:d].imag
             # label stuff that's on in the center of the window
             for label in Y[s+d/2]:
                 if (label.data[1]) >= m:
                     continue
                 else:
                     Ytrain[j,label.data[1]] = 1
-        Xtrain = Xtrain.reshape(k, d*2)
+        Xtrain = Xtrain.reshape(k, d*2, order='F')
         np.save("/home/qianlim/low_mem/music_train_x_128_{}.npy".format(index), Xtrain)
         np.save("/home/qianlim/low_mem/music_train_y_128_{}.npy".format(index), Ytrain)
         index = index + 1
@@ -62,7 +61,7 @@ for i in range(len(test_data)):
                     continue
                 else:
                     Ytest[j,label.data[1]] = 1
-        Xtest = Xtest.reshape(k_test, d*2)
+        Xtest = Xtest.reshape(k_test, d*2, order='F')
         np.save("/home/qianlim/low_mem/music_test_x_128_{}.npy".format(index), Xtest)
         np.save("/home/qianlim/low_mem/music_test_y_128_{}.npy".format(index), Ytest)
         index = index + 1
