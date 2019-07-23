@@ -8,13 +8,17 @@ from torch import nn
 import torch.nn.functional as F
 import numpy as np
 from modules.transformer import TransformerEncoder, TransformerDecoder
+from models import *
 from utils import count_parameters
 from conv import Conv1d
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class Flatten(nn.Module):
-    def forward(self, x):
-        x = x.view(x.size()[0], -1)
-        return x
+    def forward(self, input_r, input_i):
+        input_r = input_r.view(input_r.size()[0], -1)
+        input_i = input_i.view(input_i.size()[0], -1)
+        return input_r, input_i
 
 class TransformerModel(nn.Module):
     def __init__(self, ntokens, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, crossmodal=False):
@@ -32,33 +36,33 @@ class TransformerModel(nn.Module):
         :param crossmodal: Use Crossmodal Transformer or Not
         """
         super(TransformerModel, self).__init__()
-        self.cnn = nn.Sequential(
-            Conv1d(in_channels=2, out_channels=16, kernel_size=6, stride=2),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
+        self.cnn = ComplexSequential(
+            ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=2),
+            ComplexBatchNorm1d(16),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
 
-            Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
+            ComplexConv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
+            ComplexBatchNorm1d(32),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
 
-            Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
+            ComplexConv1d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
+            ComplexBatchNorm1d(64),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
 
-            Conv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
+            ComplexConv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
+            ComplexBatchNorm1d(64),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
 
-            Conv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
-            nn.ReLU(),
-            Conv1d(in_channels=128, out_channels=128, kernel_size=3, stride=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
+            ComplexConv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
+            ComplexReLU(),
+            ComplexConv1d(in_channels=128, out_channels=128, kernel_size=3, stride=1),
+            ComplexBatchNorm1d(128),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
             Flatten(),
             
             # nn.Linear(256*32, 2048),
@@ -70,14 +74,13 @@ class TransformerModel(nn.Module):
         assert self.orig_d_a == self.orig_d_b
         channels = (((((((((((self.orig_d_a -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
             -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -3)//1+1 -2)//2+1
-        self.d_a, self.d_b = 128*channels//2, 128*channels//2
+        self.d_a, self.d_b = 128*channels, 128*channels
         self.ntokens = ntokens
         #final_out = (self.orig_d_l + self.orig_d_a) *  horizons
         final_out = embed_dim * 2
         h_out = hidden_size
         self.num_heads = num_heads
         self.layers = layers
-        self.horizons = horizons
         self.attn_dropout = attn_dropout
         self.relu_dropout = relu_dropout
         self.res_dropout = res_dropout
@@ -86,11 +89,10 @@ class TransformerModel(nn.Module):
         self.crossmodal = crossmodal
         
         # Transformer networks
-        self.trans = nn.ModuleList([self.get_network() for i in range(self.horizons)])
+        self.trans = self.get_network()
         print("Encoder Model size: {0}".format(count_parameters(self.trans)))
         # Projection layers
-        self.proj_a = nn.ModuleList([nn.Linear(self.d_a, self.embed_dim) for i in range(self.horizons)])
-        self.proj_b = nn.ModuleList([nn.Linear(self.d_b, self.embed_dim) for i in range(self.horizons)])
+        self.proj = ComplexLinear(self.d_a, self.embed_dim)
         
         self.out_fc1 = nn.Linear(final_out, h_out)
         
@@ -106,21 +108,26 @@ class TransformerModel(nn.Module):
         """
         x should have dimension [batch_size, seq_len, n_features] (i.e., N, L, C).
         """
-        batch_size = x.shape[0]
-        x = x.reshape(-1, 2, self.orig_d_a) # （seq_len, 2, n_features）
-        x = self.cnn(x)
-        x = x.reshape(batch_size, -1, self.d_a + self.d_b)
-        x_a = x[:, :, :self.d_a]
-        x_b = x[:, :, self.d_a: self.d_a + self.d_b]
-        x_a, x_b = [self.proj_a[i](x_a) for i in range(self.horizons)], [self.proj_b[i](x_b) for i in range(self.horizons)]
+        batch_size, time_step, n_features = x.shape
+
+        # even_indices = torch.tensor([i for i in range(n_features) if i % 2 == 0]).to(device=device)
+        # odd_indices = torch.tensor([i for i in range(n_features) if i % 2 == 1]).to(device=device)
+        # input_a = torch.index_select(x, 2, even_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
+        # input_b = torch.index_select(x, 2, odd_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
+        input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
+        input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
+
+        input_a, input_b = self.cnn(input_a, input_b)
+        input_a = input_a.reshape(batch_size, -1, self.d_a)
+        input_b = input_b.reshape(batch_size, -1, self.d_b)
+        input_a, input_b = self.proj(input_a, input_b)
         # Pass the input through individual transformers
-        h_as_bs = [self.trans[i](x_a[i], x_b[i]) for i in range(self.horizons)] 
-        h_as_bs_each_catted = [torch.cat([h_as_bs[i][0], h_as_bs[i][1]], dim=-1) for i in range(self.horizons)]
-        h_concat = torch.cat(h_as_bs_each_catted, dim=-1)
+        h_as, h_bs = self.trans(input_a, input_b)
+        h_concat = torch.cat([h_as, h_bs], dim=-1)
         
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
         # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stable
-        return output, h_concat
+        return output
 
 class TransformerGenerationModel(nn.Module):
     def __init__(self, ntokens, input_dims, hidden_size, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):

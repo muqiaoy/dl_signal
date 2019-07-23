@@ -76,7 +76,7 @@ def train_model(settings):
             model.zero_grad()
             # For most optimizer
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
-            preds, _ = model(batch_X)
+            preds = model(batch_X)
             true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
             pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
             loss = criterion(preds, batch_y)
@@ -104,7 +104,7 @@ def train_model(settings):
         with torch.no_grad():
             for i_batch, (batch_X, batch_y) in enumerate(loader):
                 batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
-                preds, _ = model(batch_X)
+                preds = model(batch_X)
                 true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
                 pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
                 loss = criterion(preds, batch_y)

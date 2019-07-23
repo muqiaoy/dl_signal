@@ -176,49 +176,6 @@ class FNN(nn.Module):
         logitis = self.fc2(logitis)
         return compressed_signal, nn.functional.log_softmax(logitis, dim=1)
 
-class FNN_complex(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
-        super(FNN_complex, self).__init__()
-        self.num_hidden = len(hidden_size)
-        self.non_linear = nn.ReLU()
-        self.hidden = nn.ModuleList()
-        self.bn = nn.ModuleList()
-        self.biases = []
-        self.biases.append(torch.Tensor(np.random.randn(hidden_size[0]) / np.sqrt(hidden_size[0])))
-        self.dropout = nn.Dropout(dropout)
-
-        self.A1 = nn.Linear(input_size//2, hidden_size[0]//2, bias=False)
-        self.B1 = nn.Linear(input_size//2, hidden_size[0]//2, bias=False)
-        self.bn1 = nn.BatchNorm1d(hidden_size[0])
-
-        for i in range(self.num_hidden - 1):
-            self.hidden.append(nn.Linear(hidden_size[i]//2, hidden_size[i+1]//2, bias=False))
-            self.hidden.append(nn.Linear(hidden_size[i]//2, hidden_size[i+1]//2, bias=False))
-            self.bn.append(nn.BatchNorm1d(hidden_size[i+1]))
-            self.biases.append(torch.Tensor(np.random.randn(hidden_size[i+1]) / np.sqrt(hidden_size[i+1])))
-
-        self.A2 = nn.Linear(hidden_size[self.num_hidden - 1]//2, output_size//2, bias=False)
-        self.B2 = nn.Linear(hidden_size[self.num_hidden - 1]//2, output_size//2, bias=False)
-        self.biases.append(torch.Tensor(np.random.randn(output_size) / np.sqrt(output_size)))
-    
-    def forward(self, x): #(100, 3200)
-        global device
-        x = x.reshape(x.shape[0],-1,2)
-        var_x = x[:,:,0].to(device=device) 
-        var_y = x[:,:,1].to(device=device)
-        logitis = self.dropout(self.non_linear(self.bn1(torch.cat((self.A1(var_x)-self.B1(var_y), self.A1(var_y)+self.B1(var_x)), 1) + self.biases[0].to(device=device))))
-        for i in range(self.num_hidden - 1):
-            logitis = logitis.reshape(logitis.shape[0],-1,2)
-            var_x = logitis[:,:,0].to(device=device) 
-            var_y = logitis[:,:,1].to(device=device)
-            logitis = self.dropout(self.non_linear(self.bn[i](torch.cat((self.hidden[2*i](var_x)-self.hidden[2*i+1](var_y), self.hidden[2*i](var_y)+self.hidden[2*i+1](var_x)), 1) + self.biases[i+1].to(device=device))))
-        compressed_signal = logitis
-        logitis = logitis.reshape(logitis.shape[0],-1,2)
-        var_x = logitis[:,:,0].to(device=device) 
-        var_y = logitis[:,:,1].to(device=device)
-        logitis = self.non_linear(torch.cat((self.A2(var_x)-self.B2(var_y), self.A2(var_y)+self.B2(var_x)),1) + self.biases[self.num_hidden].to(device=device))
-        return compressed_signal, nn.functional.log_softmax(logitis, dim=1)
-
 class FNN_crelu(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, non_linear='tanh', dropout=0.0):
         super(FNN_crelu, self).__init__()
@@ -288,7 +245,91 @@ class FNN_crelu(nn.Module):
 
         return compressed_signal, nn.functional.log_softmax(logitis, dim=1)
 
+class ComplexSequential(nn.Sequential):
+    def forward(self, input_r, input_t):
+        for module in self._modules.values():
+            input_r, input_t = module(input_r, input_t)
+        return input_r, input_t
 
+class ComplexDropout(nn.Module):
+    def __init__(self,p=0.5, inplace=False):
+        super(ComplexDropout,self).__init__()
+        self.p = p
+        self.inplace = inplace
+        self.dropout_r = nn.Dropout(p, inplace)
+        self.dropout_i = nn.Dropout(p, inplace)
+
+    def forward(self,input_r,input_i):
+        return self.dropout_r(input_r), self.dropout_i(input_i)
+
+class ComplexReLU(nn.Module):
+    def __init__(self):
+        super(ComplexReLU,self).__init__()
+        self.relu_r = nn.ReLU()
+        self.relu_i = nn.ReLU()
+
+    def forward(self,input_r,input_i):
+        return self.relu_r(input_r), self.relu_i(input_i)
+
+class ComplexConv1d(nn.Module):
+
+    def __init__(self,in_channels, out_channels, kernel_size=3, stride=1, padding = 0,
+                 dilation=1, groups=1, bias=True):
+        super(ComplexConv1d, self).__init__()
+        self.conv_r = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        self.conv_i = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+
+    def forward(self,input_r, input_i):
+#        assert(input_r.size() == input_i.size())
+        return self.conv_r(input_r)-self.conv_i(input_i), \
+               self.conv_r(input_i)+self.conv_i(input_r)
+
+class ComplexMaxPool1d(nn.Module):
+
+    def __init__(self,kernel_size, stride= None, padding = 0,
+                 dilation = 1, return_indices = False, ceil_mode = False):
+        super(ComplexMaxPool1d,self).__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.ceil_mode = ceil_mode
+        self.return_indices = return_indices
+        self.maxpool_r = nn.MaxPool1d(kernel_size = self.kernel_size,
+                                stride = self.stride, padding = self.padding,
+                                dilation = self.dilation, ceil_mode = self.ceil_mode,
+                                return_indices = self.return_indices)
+        self.maxpool_i = nn.MaxPool1d(kernel_size = self.kernel_size,
+                                stride = self.stride, padding = self.padding,
+                                dilation = self.dilation, ceil_mode = self.ceil_mode,
+                                return_indices = self.return_indices)
+
+    def forward(self,input_r,input_i):
+        return self.maxpool_r(input_r), self.maxpool_i(input_i)
+
+class ComplexLinear(nn.Module):
+
+    def __init__(self, in_features, out_features):
+        super(ComplexLinear, self).__init__()
+        self.fc_r = nn.Linear(in_features, out_features)
+        self.fc_i = nn.Linear(in_features, out_features)
+
+    def forward(self,input_r, input_i):
+        return self.fc_r(input_r)-self.fc_i(input_i), \
+               self.fc_r(input_i)+self.fc_i(input_r)
+
+class ComplexBatchNorm1d(nn.Module):
+    '''
+    Naive approach to complex batch norm, perform batch norm independently on real and imaginary part.
+    '''
+    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True, \
+                 track_running_stats=True):
+        super(ComplexBatchNorm1d, self).__init__()
+        self.bn_r = nn.BatchNorm1d(num_features, eps, momentum, affine, track_running_stats)
+        self.bn_i = nn.BatchNorm1d(num_features, eps, momentum, affine, track_running_stats)
+
+    def forward(self,input_r, input_i):
+        return self.bn_r(input_r), self.bn_i(input_i)
 
 
 def eval_FNN(data, label, model, num_classes, loss_func, name, path):

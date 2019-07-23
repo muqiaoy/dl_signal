@@ -4,6 +4,7 @@ from torch.nn import Parameter
 import torch.nn.functional as F
 from modules.position_embedding import SinusoidalPositionalEmbedding
 from modules.multihead_attention import MultiheadAttention
+from models import *
 import math
 
 
@@ -116,10 +117,8 @@ class TransformerEncoderLayer(nn.Module):
         self.res_dropout = res_dropout
         self.normalize_before = True
 
-        self.fc1_A = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_A = Linear(self.embed_dim, self.embed_dim)
-        self.fc1_B = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_B = Linear(self.embed_dim, self.embed_dim)
+        self.fc1 = ComplexLinear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc2 = ComplexLinear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
 
         self.layer_norms_A = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
         self.layer_norms_B = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
@@ -169,14 +168,14 @@ class TransformerEncoderLayer(nn.Module):
         residual_B = x_B
         
         # FC1
-        x_A = F.relu(self.fc1_A(x_A))
-        x_B = F.relu(self.fc1_B(x_B))
+        x_A, x_B = self.fc1(x_A, x_B)
+        x_A = F.relu(x_A)
+        x_B = F.relu(x_B)
         x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
         
         # FC2
-        x_A = self.fc2_A(x_A)
-        x_B = self.fc2_B(x_B)
+        x_A, x_B = self.fc2(x_A, x_B)
 
         x_A = self.layer_norms_A[1](x_A)
         x_B = self.layer_norms_B[1](x_B)
