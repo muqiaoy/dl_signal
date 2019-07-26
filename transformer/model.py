@@ -52,12 +52,12 @@ class TransformerModel(nn.Module):
             ComplexReLU(),
             ComplexMaxPool1d(2, stride=2),
 
-            ComplexConv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
-            ComplexBatchNorm1d(64),
+            ComplexConv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
+            ComplexBatchNorm1d(128),
             ComplexReLU(),
             ComplexMaxPool1d(2, stride=2),
 
-            ComplexConv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
+            ComplexConv1d(in_channels=128, out_channels=128, kernel_size=3, stride=1),
             ComplexReLU(),
             ComplexConv1d(in_channels=128, out_channels=128, kernel_size=3, stride=1),
             ComplexBatchNorm1d(128),
