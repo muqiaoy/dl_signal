@@ -14,6 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 import os
 import time
+import random
 
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
@@ -131,24 +132,24 @@ def train_model(settings, args, training_set, test_set, train_loader, test_loade
 
 #         end = time.time()
 #         print("time: %d" % (end - start))
-    print(best_acc_test)
+    print("APS: ", best_acc_test)
     return best_acc_test
 
-def run(lr):
+def run(attn_dropout, relu_dropout, res_dropout, lr):
     parser = argparse.ArgumentParser(description='Signal Data Analysis')
     parser.add_argument('-f', default='', type=str)
     parser.add_argument('--model', type=str, default='Transformer',
                         help='name of the model to use (Transformer, etc.)')
     parser.add_argument('--data', type=str, default='music') 
-    parser.add_argument('--path', type=str, default='/home/qianlim/toy_low_mem',
+    parser.add_argument('--path', type=str, default='/home/qianlim/low_mem',
                         help='path for storing the dataset')
     parser.add_argument('--time_step', type=int, default=128,
                         help='number of time step for each sequence(default: 2048)')
-    parser.add_argument('--attn_dropout', type=float, default=0.0,
+    parser.add_argument('--attn_dropout', type=float, default=attn_dropout,
                         help='attention dropout')
-    parser.add_argument('--relu_dropout', type=float, default=0.1,
+    parser.add_argument('--relu_dropout', type=float, default=relu_dropout,
                         help='relu dropout')
-    parser.add_argument('--res_dropout', type=float, default=0.1,
+    parser.add_argument('--res_dropout', type=float, default=res_dropout,
                         help='residual block dropout')
     parser.add_argument('--nlevels', type=int, default=6,
                         help='number of layers in the network (if applicable) (default: 6)')
@@ -159,20 +160,20 @@ def run(lr):
                         help='dimension of real and imag embeddimg before transformer (default: 100)')
     parser.add_argument('--output_dim', type=int, default=128,
                         help='dimension of output (default: 128)')
-    parser.add_argument('--num_epochs', type=int, default=30,
-                        help='number of epochs (default: 10)')
+    parser.add_argument('--num_epochs', type=int, default=25,
+                        help='number of epochs (default: 25)')
     parser.add_argument('--num_heads', type=int, default=8,
                         help='number of heads for the transformer network')
     parser.add_argument('--seed', type=int, default=1111,
                         help='random seed')
-    parser.add_argument('--batch_size', type=int, default=4, metavar='N',
-                        help='batch size (default: 4')
+    parser.add_argument('--batch_size', type=int, default=16, metavar='N',
+                        help='batch size (default: 16')
     parser.add_argument('--attn_mask', action='store_true',
                         help='use attention mask for Transformer (default: False)')
     parser.add_argument('--crossmodal', action='store_false',
                         help='determine whether use the crossmodal fusion or not (default: True)')
-    parser.add_argument('--lr', type=float, default=1e-3,
-                        help='initial learning rate (default: 1e-3)')
+    parser.add_argument('--lr', type=float, default=lr,
+                        help='initial learning rate')
     parser.add_argument('--clip', type=float, default=0.35,
                         help='gradient clip value (default: 0.35)')
     parser.add_argument('--optim', type=str, default='Adam',
@@ -185,6 +186,10 @@ def run(lr):
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+
 #     print(args)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

@@ -171,22 +171,23 @@ class SignalDataset_music(Dataset):
 class SignalDataset_music_Low_Mem(Dataset):
     """Signal Dataset"""
     
-    def __init__(self, root_dir, time_step,train):
+    def __init__(self, root_dir, time_step, train):
         self.root_dir = root_dir
+        self.time_step = time_step
         self.train = train
         self.len = 0
         if self.train:
-            self.len = len(glob.glob1(root_dir,"*train_x*.npy"))
+            self.len = len(glob.glob1(root_dir, "*train_x*.npy"))
         else:
-            self.len = len(glob.glob1(root_dir,"*test_x*.npy"))
+            self.len = len(glob.glob1(root_dir, "*test_x*.npy"))
     
     def __getitem__(self, idx):
         if self.train:
-            x_path = os.path.join(self.root_dir, "music_train_x_128_{}.npy".format(idx))
-            y_path = os.path.join(self.root_dir, "music_train_y_128_{}.npy".format(idx))
+            x_path = os.path.join(self.root_dir, "music_train_x_{}_{}.npy".format(self.time_step, idx))
+            y_path = os.path.join(self.root_dir, "music_train_y_{}_{}.npy".format(self.time_step, idx))
         else:
-            x_path = os.path.join(self.root_dir, "music_test_x_128_{}.npy".format(idx))
-            y_path = os.path.join(self.root_dir, "music_test_y_128_{}.npy".format(idx))
+            x_path = os.path.join(self.root_dir, "music_test_x_{}_{}.npy".format(self.time_step, idx))
+            y_path = os.path.join(self.root_dir, "music_test_y_{}_{}.npy".format(self.time_step, idx))
         data = np.load(x_path)
         label = np.load(y_path)
         return data, label
