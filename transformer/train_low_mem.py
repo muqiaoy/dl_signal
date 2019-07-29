@@ -14,6 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 import os
 import time
+import random
 
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
@@ -181,6 +182,10 @@ parser.add_argument('--hidden_size', type=int, default=2000,
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
+np.random.seed(args.seed)
+random.seed(args.seed)
+torch.backends.cudnn.deterministic = True
 print(args)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
