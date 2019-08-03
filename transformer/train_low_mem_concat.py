@@ -6,7 +6,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 from utils import SignalDataset_music_Low_Mem, SignalDataset_music
 import argparse
-from model import *
+from model_concat import *
 import torch.optim as optim
 import numpy as np
 import time

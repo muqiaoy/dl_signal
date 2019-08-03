@@ -1,9 +1,15 @@
+._*
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.pyc
-
+transformer/modules/__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
 # C extensions
 *.so
 

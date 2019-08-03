@@ -12,8 +12,8 @@ d = 2048              # number of features
 m = 128               # (USED BY DCN) number of distinct notes
 stride = 512         # samples between windows
 stride_test = 128            # stride in test set
-k = 128            # number of window (time step) per piece
-k_test = 128
+k = 64            # number of window (time step) per piece
+k_test = 64
 data = np.load(open('/projects/rsalakhugroup/complex/original_musicnet_data/musicnet_11khz.npz','rb'), encoding='latin1')
 
 # split our dataset into train and test
@@ -22,6 +22,7 @@ train_data = [f for f in data.files if f not in test_data]
 index = 0
 # create the train set
 for i in range(len(train_data)):
+    print(i)
     X,Y = data[train_data[i]]
     for p in range(int((len(X)-window_size)/stride/k)):
         Xtrain = np.empty([k,d,2])
@@ -38,8 +39,8 @@ for i in range(len(train_data)):
                 else:
                     Ytrain[j,label.data[1]] = 1
         Xtrain = Xtrain.reshape(k, d*2, order='F')
-        np.save("/home/qianlim/low_mem/music_train_x_128_{}.npy".format(index), Xtrain)
-        np.save("/home/qianlim/low_mem/music_train_y_128_{}.npy".format(index), Ytrain)
+        np.save("/home/muqiaoy/low_mem/music_train_x_64_{}.npy".format(index), Xtrain)
+        np.save("/home/muqiaoy/low_mem/music_train_y_64_{}.npy".format(index), Ytrain)
         index = index + 1
 
 # create the test set
@@ -62,7 +63,7 @@ for i in range(len(test_data)):
                 else:
                     Ytest[j,label.data[1]] = 1
         Xtest = Xtest.reshape(k_test, d*2, order='F')
-        np.save("/home/qianlim/low_mem/music_test_x_128_{}.npy".format(index), Xtest)
-        np.save("/home/qianlim/low_mem/music_test_y_128_{}.npy".format(index), Ytest)
+        np.save("/home/muqiaoy/low_mem/music_test_x_64_{}.npy".format(index), Xtest)
+        np.save("/home/muqiaoy/low_mem/music_test_y_64_{}.npy".format(index), Ytest)
         index = index + 1
 print("finished")

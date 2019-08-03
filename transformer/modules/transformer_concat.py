@@ -49,7 +49,7 @@ class TransformerEncoder(nn.Module):
         ])
         self.register_buffer('version', torch.Tensor([2]))
 
-    def forward(self, input_A, input_B):
+    def forward(self, x):
         """
         Args:
             x_in (FloatTensor): embedded input of shape `(src_len, batch, embed_dim)`
@@ -62,12 +62,11 @@ class TransformerEncoder(nn.Module):
                 - **encoder_padding_mask** (ByteTensor): the positions of
                   padding elements of shape `(batch, src_len)`
         """
-        input_A = self.scale_embed_position_dropout(input_A)
-        input_B = self.scale_embed_position_dropout(input_B)
+        x = self.scale_embed_position_dropout(x)
         # For each transformer encoder layer:
         for layer in self.layers:
-            input_A, input_B = layer(input_A, input_B)
-        return input_A, input_B
+            x = layer(x)
+        return x
 
     def max_positions(self):
         """Maximum input length supported by the encoder."""
@@ -117,13 +116,12 @@ class TransformerEncoderLayer(nn.Module):
         self.res_dropout = res_dropout
         self.normalize_before = True
 
-        self.fc1 = ComplexLinear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2 = ComplexLinear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc1 = nn.Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc2 = nn.Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
 
-        self.layer_norms_A = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
-        self.layer_norms_B = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
+        self.layer_norms = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
 
-    def forward(self, x_A, x_B):
+    def forward(self, x):
         """
         Args:
             x (Tensor): input to the layer of shape `(seq_len, batch, embed_dim)`
@@ -136,57 +134,31 @@ class TransformerEncoderLayer(nn.Module):
         """
         ## Attention Part
         # Residual and Layer Norm
-        residual_A = x_A
-        residual_B = x_B
+        residual = x
         # Multihead Attention
-        x_aaa = self.attention_block(x_A, x_A, x_A)
-        x_aab = self.attention_block(x_A, x_A, x_B)
-        x_aba = self.attention_block(x_A, x_B, x_A)
-        x_baa = self.attention_block(x_B, x_A, x_A)
-        x_abb = self.attention_block(x_A, x_B, x_B)
-        x_bab = self.attention_block(x_B, x_A, x_B)
-        x_bba = self.attention_block(x_B, x_B, x_A)
-        x_bbb = self.attention_block(x_B, x_B, x_B)
+        x = self.attention_block(x,x,x)
 
-
-        
-        x_A = x_aaa - x_abb - x_bab - x_bba
-        x_B = -x_bbb + x_baa + x_aba + x_aab
-
-        x_A = self.layer_norms_A[0](x_A)
-        x_B = self.layer_norms_B[0](x_B)
+        x = self.layer_norms[0](x)
         # Dropout and Residual
-        x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
-
-        x_A = residual_A + x_A
-        x_B = residual_B + x_B
-    
+        x = F.dropout(x, p=self.res_dropout, training=self.training)
+        x = residual + x
         
         # ##FC Part
-        residual_A = x_A
-        residual_B = x_B
+        residual = x
         
         # FC1
-        x_A, x_B = self.fc1(x_A, x_B)
-        x_A = F.relu(x_A)
-        x_B = F.relu(x_B)
-        x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=self.relu_dropout, training=self.training)
         
-        # FC2
-        x_A, x_B = self.fc2(x_A, x_B)
+        x = self.fc2(x)
+        x = self.layer_norms[1](x)
 
-        x_A = self.layer_norms_A[1](x_A)
-        x_B = self.layer_norms_B[1](x_B)
-
-        x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
+        x = F.dropout(x, p=self.res_dropout, training=self.training)
         
-        x_A = residual_A + x_A
-        x_B = residual_B + x_B
+        x = residual + x
 
-        return x_A, x_B
+        return x
 
     def scale_embed_position_dropout(self, x_in):
         x = self.embed_scale * x_in
@@ -458,4 +430,3 @@ if __name__ == '__main__':
     encoder = TransformerEncoder(300, 4, 2)
     x = torch.tensor(torch.rand(20, 2, 300))
     print(encoder(x).shape)
-
