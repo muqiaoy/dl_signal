@@ -31,7 +31,7 @@ class TransformerModel(nn.Module):
         :param crossmodal: Use Crossmodal Transformer or Not
         """
         super(TransformerModel, self).__init__()
-        self.cnn = ComplexSequential(
+        self.cnn = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=16, kernel_size=6, stride=2),
             nn.BatchNorm1d(16),
             nn.ReLU(),
@@ -56,15 +56,14 @@ class TransformerModel(nn.Module):
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(2, stride=2),
-            nn.Flatten(),
             )
         [self.orig_d_a, self.orig_d_b] = input_dims
         assert self.orig_d_a == self.orig_d_b
         channels = ((((((((((self.orig_d_a + self.orig_d_b -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
             -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1
-        self.d_a, self.d_b = 128*channels, 128*channels
+        self.d_x = 128*channels
         self.ntokens = ntokens
-        final_out = embed_dim * 2
+        final_out = embed_dim
         h_out = hidden_size
         self.num_heads = num_heads
         self.layers = layers
@@ -79,7 +78,7 @@ class TransformerModel(nn.Module):
         self.trans = self.get_network()
         print("Encoder Model size: {0}".format(count_parameters(self.trans)))
         # Projection layers
-        self.proj = ComplexLinear(self.d_a, self.embed_dim)
+        self.proj = nn.Linear(self.d_x, self.embed_dim)
         
         self.out_fc1 = nn.Linear(final_out, h_out)
         
@@ -96,18 +95,13 @@ class TransformerModel(nn.Module):
         x should have dimension [batch_size, seq_len, n_features] (i.e., N, L, C).
         """
         batch_size, time_step, n_features = x.shape
-
-        # even_indices = torch.tensor([i for i in range(n_features) if i % 2 == 0]).to(device=device)
-        # odd_indices = torch.tensor([i for i in range(n_features) if i % 2 == 1]).to(device=device)
-        # input_a = torch.index_select(x, 2, even_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
-        # input_b = torch.index_select(x, 2, odd_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
-        x = self.cnn(x)
-        x = x.reshape(batch_size, -1, self.d_a + self.d_b)
+        x = x.view(-1, 1, n_features)
+        x = self.cnn(x).view(x.size()[0], -1)
+        x = x.reshape(batch_size, -1, self.d_x)
         x = self.proj(x)
         # Pass the input through individual transformers
         h_x = self.trans(x)
         h_concat = torch.cat([h_x], dim=-1)
-        
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
         # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stable
         return output
