@@ -5,7 +5,7 @@ sys.path.insert(0,parentdir)
 
 import torch
 from torch import nn
-from utils import SignalDataset_iq, SignalDataset_music, count_parameters
+from utils import SignalDataset_iq, SignalDataset_music_Low_Mem, count_parameters
 import argparse
 from model import *
 import torch.optim as optim
@@ -29,6 +29,7 @@ def train_transformer():
                              input_dims=[input_dim, input_dim],
                              # proj_dims=args.modal_lengths,
                              hidden_size=args.hidden_size,
+                             embed_dim=args.embed_dim,
                              # output_dim=args.output_dim,
                              num_heads=args.num_heads,
                              attn_dropout=args.attn_dropout,
@@ -193,6 +194,8 @@ parser = argparse.ArgumentParser(description='Signal Data Analysis')
 parser.add_argument('-f', default='', type=str)
 parser.add_argument('--model', type=str, default='Transformer',
                     help='name of the model to use (Transformer, etc.)')
+parser.add_argument('--embed_dim', type=int, default=128,
+                    help='dimension of real and imag embeddimg before transformer (default: 100)')
 parser.add_argument('--data', type=str, default='music')
 parser.add_argument('--path', type=str, default='data',
                     help='path for storing the dataset')
@@ -262,9 +265,9 @@ if args.data == 'iq':
     training_set = SignalDataset_iq(args.path, time_step=total_time_step, train=True)
     test_set = SignalDataset_iq(args.path, time_step=total_time_step, train=False)
 else: 
-    assert(total_time_step == 128 or total_time_step == 256)
-    training_set = SignalDataset_music(args.path, time_step=total_time_step, train=True)
-    test_set = SignalDataset_music(args.path, time_step=total_time_step, train=False)
+    assert(total_time_step == 128 or total_time_step == 64)
+    training_set = SignalDataset_music_Low_Mem(args.path, time_step=total_time_step, train=True)
+    test_set = SignalDataset_music_Low_Mem(args.path, time_step=total_time_step, train=False)
 
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)

@@ -33,6 +33,8 @@ def train_transformer():
                              attn_dropout=args.attn_dropout,
                              relu_dropout=args.relu_dropout,
                              res_dropout=args.res_dropout,
+                             out_dropout=args.out_dropout,
+                             embed_dropout=args.embed_dropout,
                              layers=args.nlevels,
                              attn_mask=args.attn_mask,
                              crossmodal=args.crossmodal)
@@ -66,17 +68,18 @@ def train_model(settings):
         num_batches = len(training_set) // batch_size
         total_batch_size = 0
         start_time = time.time()
-        shape = (training_set.len, args.time_step, args.output_dim)
+        shape = (args.time_step, training_set.len, args.output_dim)
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.train()
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
             model.zero_grad()
-            # For most optimizer
+            batch_X = batch_X.transpose(0, 1)
+            batch_y = batch_y.transpose(0, 1)
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds = model(batch_X)
-            true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
-            pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
+            true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
+            pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
             loss = criterion(preds, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -94,16 +97,18 @@ def train_model(settings):
         batch_size = args.batch_size
         loader = test_loader
         total_batch_size = 0
-        shape = (test_set.len, args.time_step, args.output_dim) 
+        shape = (args.time_step, test_set.len, args.output_dim) 
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.eval()
         with torch.no_grad():
             for i_batch, (batch_X, batch_y) in enumerate(loader):
+                batch_X = batch_X.transpose(0, 1)
+                batch_y = batch_y.transpose(0, 1)
                 batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
                 preds = model(batch_X)
-                true_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = batch_y.detach().cpu()
-                pred_vals[i_batch*batch_size:(i_batch+1)*batch_size, :, :] = preds.detach().cpu()
+                true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
+                pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
@@ -143,6 +148,10 @@ parser.add_argument('--relu_dropout', type=float, default=0.1,
                     help='relu dropout')
 parser.add_argument('--res_dropout', type=float, default=0.1,
                     help='residual block dropout')
+parser.add_argument('--out_dropout', type=float, default=0.5,
+                    help='hidden layer dropout')
+parser.add_argument('--embed_dropout', type=float, default=0.3,
+                    help='embed dimension dropout')
 parser.add_argument('--nlevels', type=int, default=6,
                     help='number of layers in the network (if applicable) (default: 6)')
 parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
@@ -203,9 +212,6 @@ if args.data == 'music':
 elif args.data == 'iq':
     training_set = SignalDataset_iq(args.path, args.time_step, train=True)
     test_set = SignalDataset_iq(args.path, args.time_step, train=False)
-# training_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], stride=512, length=args.train_size, train=True)
-# test_set = MusicNet(args.dataset, args.time_step, args.modal_lengths[0], length=, train=False)
-
 print("Finish loading the data....")
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)

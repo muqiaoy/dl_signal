@@ -16,7 +16,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, ntokens, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, attn_mask=False, crossmodal=False):
+    def __init__(self, ntokens, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, embed_dropout, layers, attn_mask=False, crossmodal=False):
         """
         Construct a basic Transfomer model for multimodal tasks.
         
@@ -71,6 +71,7 @@ class TransformerModel(nn.Module):
         self.attn_dropout = attn_dropout
         self.relu_dropout = relu_dropout
         self.res_dropout = res_dropout
+        self.embed_dropout = embed_dropout
         self.attn_mask = attn_mask
         self.embed_dim = embed_dim
         self.crossmodal = crossmodal
@@ -85,17 +86,17 @@ class TransformerModel(nn.Module):
         
         self.out_fc2 = nn.Linear(h_out, output_dim)
         
-        self.out_dropout = nn.Dropout(0.5)
+        self.out_dropout = nn.Dropout(out_dropout)
     def get_network(self):
         
         return TransformerEncoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
-            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
+            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, embed_dropout=self.embed_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
             
     def forward(self, x):
         """
         x should have dimension [batch_size, seq_len, n_features] (i.e., N, L, C).
         """
-        batch_size, time_step, n_features = x.shape
+        time_step, batch_size, n_features = x.shape
 
         # even_indices = torch.tensor([i for i in range(n_features) if i % 2 == 0]).to(device=device)
         # odd_indices = torch.tensor([i for i in range(n_features) if i % 2 == 1]).to(device=device)
@@ -103,21 +104,21 @@ class TransformerModel(nn.Module):
         # input_b = torch.index_select(x, 2, odd_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
         input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
         input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
+        print(input_a.shape)
 
         input_a, input_b = self.cnn(input_a, input_b)
-        input_a = input_a.reshape(batch_size, -1, self.d_a)
-        input_b = input_b.reshape(batch_size, -1, self.d_b)
+        input_a = input_a.reshape(time_step, batch_size, self.d_a)
+        input_b = input_b.reshape(time_step, batch_size, self.d_b)
         input_a, input_b = self.proj(input_a, input_b)
         # Pass the input through individual transformers
         h_as, h_bs = self.trans(input_a, input_b)
         h_concat = torch.cat([h_as, h_bs], dim=-1)
-        
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
         # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stable
         return output
 
 class TransformerGenerationModel(nn.Module):
-    def __init__(self, ntokens, input_dims, hidden_size, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
+    def __init__(self, ntokens, input_dims, hidden_size, embed_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
         """
         Construct a basic Transfomer model for multimodal tasks.
         
@@ -134,70 +135,98 @@ class TransformerGenerationModel(nn.Module):
         l = a, a = b 
         """
         super(TransformerGenerationModel, self).__init__()
-        [self.orig_d_l, self.orig_d_a] = input_dims
-        assert self.orig_d_l == self.orig_d_a
-        self.d_l, self.d_a = self.orig_d_l, self.orig_d_a
-        # [self.d_l, self.d_a] = proj_dims
+        self.cnn = ComplexSequential(
+            ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=2),
+            ComplexBatchNorm1d(16),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
 
+            ComplexConv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
+            ComplexBatchNorm1d(32),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
+
+            ComplexConv1d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
+            ComplexBatchNorm1d(64),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
+
+            ComplexConv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
+            ComplexBatchNorm1d(64),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
+
+            ComplexConv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
+            ComplexBatchNorm1d(128),
+            ComplexReLU(),
+            ComplexMaxPool1d(2, stride=2),
+            ComplexFlatten(),
+            )
+        [self.orig_d_a, self.orig_d_b] = input_dims
+        assert self.orig_d_a == self.orig_d_b
+        channels = ((((((((((self.orig_d_a -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
+            -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1
+        self.d_a, self.d_b = 128*channels, 128*channels
         self.ntokens = ntokens
-        final_out = self.d_l 
+        final_out = embed_dim * 2
         h_out = hidden_size
         self.num_heads = num_heads
         self.layers = layers
-        self.horizons = horizons
         self.attn_dropout = attn_dropout
         self.relu_dropout = relu_dropout
         self.res_dropout = res_dropout
-        self.attn_mask = attn_mask # for encoder 
+        self.attn_mask = attn_mask
+        self.embed_dim = embed_dim
+        self.crossmodal = crossmodal
         # self.src_mask = src_mask  # for decoder
         # self.tgt_mask = tgt_mask  # for decoder
-
-        self.crossmodal = crossmodal
         
         # Transformer networks
-        self.trans_encoder = nn.ModuleList([self.get_encoder_network() for i in range(self.horizons)])
-        self.trans_decoder = nn.ModuleList([self.get_decoder_network() for i in range(self.horizons)])
+        self.trans_encoder = self.get_encoder_network()
+        self.trans_decoder = self.get_decoder_network()
 
         print("Encoder Model size: {0}".format(count_parameters(self.trans_encoder)))
         print("Decoder Model size: {0}".format(count_parameters(self.trans_decoder)))
-            
+        
         # Projection layers
-        self.proj_l = nn.ModuleList([nn.Linear(self.orig_d_l, self.d_l) for i in range(self.horizons)])
+        self.proj_enc = ComplexLinear(self.d_a, self.embed_dim)
+        self.proj_dec = ComplexLinear(self.orig_d_a, self.embed_dim)
         
-        self.proj_a = nn.ModuleList([nn.Linear(self.orig_d_a, self.d_a) for i in range(self.horizons)])
+        self.out_fc1 = nn.Linear(final_out, h_out)
         
-        # self.proj = nn.Linear(final_out, final_out) # Not in the diagram 
-        self.out_fc1_A = nn.Linear(final_out, h_out)
-        self.out_fc1_B = nn.Linear(final_out, h_out)
-        
-        self.out_fc2_A = nn.Linear(h_out, final_out)
-        self.out_fc2_B = nn.Linear(h_out, final_out)
+        self.out_fc2 = nn.Linear(h_out, self.orig_d_a + self.orig_d_b)
         
         self.out_dropout = nn.Dropout(0.5)
 
     def get_encoder_network(self):
         
-        return TransformerEncoder(embed_dim=self.orig_d_l, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
+        return TransformerEncoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
 
     def get_decoder_network(self): 
-        return TransformerDecoder(embed_dim=self.orig_d_l, num_heads=self.num_heads, layers=self.layers, src_attn_dropout=self.attn_dropout, 
+        return TransformerDecoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, src_attn_dropout=self.attn_dropout, 
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, tgt_attn_dropout=self.attn_dropout, crossmodal=self.crossmodal)
             
     def forward(self, x, y):
         """
         x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).  
         """
-        _, batch_size, _ = x.shape
-        x_l = x[:, :, :self.orig_d_l]  
-        x_a = x[:, :, self.orig_d_l: self.orig_d_l + self.orig_d_a]
-        
-        # x_l, x_a = self.proj_l(x_l), self.proj_a(x_a)
-        x_l, x_a = [self.proj_l[i](x_l) for i in range(self.horizons)], [self.proj_a[i](x_a) for i in range(self.horizons)]
 
+        time_step, batch_size, n_features = x.shape
+        # even_indices = torch.tensor([i for i in range(n_features) if i % 2 == 0]).to(device=device)
+        # odd_indices = torch.tensor([i for i in range(n_features) if i % 2 == 1]).to(device=device)
+        # input_a = torch.index_select(x, 2, even_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
+        # input_b = torch.index_select(x, 2, odd_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
+        input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
+        input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
+
+        input_a, input_b = self.cnn(input_a, input_b)
+        input_a = input_a.reshape(-1, batch_size, self.d_a)
+        input_b = input_b.reshape(-1, batch_size, self.d_b)
+        input_a, input_b = self.proj_enc(input_a, input_b)
         # Pass the input through individual transformers
-        # h_ls, h_as = self.trans(x_l, x_a)  # Dimension (L, N, C)
-        h_ls_as = [self.trans_encoder[i](x_l[i], x_a[i]) for i in range(self.horizons)] 
+        h_as, h_bs = self.trans_encoder(input_a, input_b)
+
 
         # Some interesting behavior here;
         # First the larger the model size, the larger the range
@@ -236,44 +265,28 @@ class TransformerGenerationModel(nn.Module):
         # DECODER: ASSUME self.horizons = 1
         # print(y.shape)
         # print(self.orig_d_l)
-        enc_x_l, enc_x_a = h_ls_as[0] 
 
-        seq_len, batch_size, n_features2 = y.shape 
-        n_features = int(n_features2 / 2)
+        batch_size, seq_len, n_features2 = y.shape 
+        n_features = n_features2 // 2
 
-        y_l = y[:-1, :, :self.orig_d_l]                               # truncate last target 
-        y_a = y[:-1, :, self.orig_d_l: self.orig_d_l + self.orig_d_a] # truncate last target 
-        # print("y_l.shape")
-        # print(y_l.shape)
-        # print("y_a.shape") 
-        # print(y_a.shape)
+        y_a = y[:, :-1, :self.orig_d_a]                               # truncate last target 
+        y_b = y[:, :-1, self.orig_d_a: self.orig_d_a + self.orig_d_b] # truncate last target 
 
-        # print(y_l.shape)
-        sos_l = torch.zeros(1, batch_size, n_features).cuda()
-        sos_a = torch.zeros(1, batch_size, n_features).cuda()
-        y_l = torch.cat([sos_l, y_l], dim=0)    # add <sos> to front 
-        y_a = torch.cat([sos_a, y_a], dim=0)    # add <sos> to front 
- 
-        # print("y_l.shape")
-        # print(y_l.shape)
-        # print("y_a.shape") 
-        # print(y_a.shape)
-        # exit()
-        # print("exiting")
-        # exit()
-        out_ls_as = [self.trans_decoder[i](input_A=y_l, input_B=y_a, enc_A=enc_x_l, enc_B=enc_x_a) for i in range(self.horizons)] 
+        sos_a = torch.zeros(batch_size, 1, n_features).cuda()
+        sos_b = torch.zeros(batch_size, 1, n_features).cuda()
+        y_a = torch.cat([sos_a, y_a], dim=1)    # add <sos> to front 
+        y_b = torch.cat([sos_b, y_b], dim=1)    # add <sos> to front 
 
-        # print("exiting")
-        # exit()
-        out_ls, out_as = out_ls_as[0] 
+        y_a, y_b = self.proj_dec(y_a, y_b)
+        out_as, out_bs = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
+
         # out_ls = out_ls[:-1]  # no need to slice if we <sos> to front and truncate last 
         # out_as = out_as[:-1]
 
-        out_A = self.out_fc2_A(self.out_dropout(F.relu(self.out_fc1_A(out_ls))))
-        out_B = self.out_fc2_B(self.out_dropout(F.relu(self.out_fc1_B(out_as))))
+        out_concat = torch.cat([out_as, out_bs], dim=-1)
+        
+        output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
 
-        out_concated = torch.cat([out_A, out_B], dim=-1) # (TS, BS, feature_dim) 
-        # out_concated = out_concated.transpose(0, 1) # (BS, TS, feature_dim) 
 
-        return out_concated # (TS, BS, feature_dim)  
+        return output # (TS, BS, feature_dim)  
         # return output, h_ls_as   # (list dim = horizons, tuple dim = 2, Tensor(10 (TS), 256 (BS), 160 (a_dim/b_dim)))

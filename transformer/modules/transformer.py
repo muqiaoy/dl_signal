@@ -23,9 +23,9 @@ class TransformerEncoder(nn.Module):
         crossmodal (boo): whether we do cross-modal transformer or not
     """
 
-    def __init__(self, embed_dim, num_heads, layers, attn_dropout=0.0, relu_dropout=0.0, res_dropout=0.0, attn_mask=False, crossmodal=None):
+    def __init__(self, embed_dim, num_heads, layers, attn_dropout, relu_dropout, res_dropout, embed_dropout, attn_mask=False, crossmodal=None):
         super().__init__()
-        self.dropout = 0.3      # Embedding dropout
+        self.dropout = embed_dropout      # Embedding dropout
         self.attn_dropout = attn_dropout
         self.embed_dim = embed_dim
         self.embed_scale = 1
@@ -79,7 +79,7 @@ class TransformerEncoder(nn.Module):
         x = self.embed_scale * x_in
         if self.embed_positions is not None:
             x += self.embed_positions(x_in.transpose(0, 1)[:, :, 0]).transpose(0, 1)
-        x = F.dropout(x, p=self.dropout, training=self.training) # may change
+        x = F.dropout(x, p=self.dropout, training=self.training)
         return x
 
 
@@ -100,7 +100,6 @@ class TransformerEncoderLayer(nn.Module):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
-        # Hubert
         self.self_attn = MultiheadAttention(
             embed_dim=self.embed_dim,
             num_heads=self.num_heads,
@@ -138,6 +137,7 @@ class TransformerEncoderLayer(nn.Module):
         # Residual and Layer Norm
         residual_A = x_A
         residual_B = x_B
+
         # Multihead Attention
         x_aaa = self.attention_block(x_A, x_A, x_A)
         x_aab = self.attention_block(x_A, x_A, x_B)
@@ -149,12 +149,12 @@ class TransformerEncoderLayer(nn.Module):
         x_bbb = self.attention_block(x_B, x_B, x_B)
 
 
-        
         x_A = x_aaa - x_abb - x_bab - x_bba
         x_B = -x_bbb + x_baa + x_aba + x_aab
-
+        
         x_A = self.layer_norms_A[0](x_A)
         x_B = self.layer_norms_B[0](x_B)
+        
         # Dropout and Residual
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
@@ -198,22 +198,8 @@ class TransformerEncoderLayer(nn.Module):
     def attention_block(self, x, x_k, x_v):
 
         mask = None
-
-#         x   = self.maybe_layer_norm(0, x, before=True)
-#         x_k = self.maybe_layer_norm(0, x_k, before=True)
-#         x_v = self.maybe_layer_norm(0, x_v, before=True) 
         x, _ = self.self_attn(query=x, key=x_k, value=x_v, attn_mask=mask)
-        
-
         return x
-
-    def maybe_layer_norm(self, i, x, before=False, after=False):
-        assert before ^ after
-        if after ^ self.normalize_before:
-            return self.layer_norms[i](x)
-        else:
-            return x
-
 class TransformerDecoder(nn.Module):
     """
     Transformer encoder consisting of *args.encoder_layers* layers. Each layer
@@ -231,7 +217,7 @@ class TransformerDecoder(nn.Module):
 
     def __init__(self, embed_dim, num_heads, layers, src_attn_dropout=0.0, relu_dropout=0.0, res_dropout=0.0, tgt_attn_dropout=0.0, crossmodal=None):
         super().__init__()
-        self.dropout = 0      # Embedding dropout
+        self.dropout = 0.3      # Embedding dropout
         # self.attn_dropout = attn_dropout
         self.embed_dim = embed_dim
         self.embed_scale = 1
@@ -282,14 +268,6 @@ class TransformerDecoder(nn.Module):
             return self.max_source_positions
         return min(self.max_source_positions, self.embed_positions.max_positions())
 
-    def scale_embed_position_dropout(self, x_in):
-        x = self.embed_scale * x_in
-        if self.embed_positions is not None:
-            y = self.embed_positions(x_in.transpose(0, 1)[:, :, 0]).transpose(0, 1)
-            x += self.embed_positions(x_in.transpose(0, 1)[:, :, 0]).transpose(0, 1)
-        x = F.dropout(x, p=self.dropout, training=self.training) # may change
-        return x
-
 
 class TransformerDecoderLayer(nn.Module): 
     def __init__(self, embed_dim, num_heads=4, src_attn_dropout=0.1, relu_dropout=0.1, res_dropout=0.1, tgt_attn_dropout=0.1, src_mask=True, tgt_mask=False):
@@ -323,10 +301,8 @@ class TransformerDecoderLayer(nn.Module):
             add_zero_attn=False, 
         )
 
-        self.fc1_A = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_A = Linear(self.embed_dim, self.embed_dim)
-        self.fc1_B = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_B = Linear(self.embed_dim, self.embed_dim)
+        self.fc1 = ComplexLinear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc2 = ComplexLinear(self.embed_dim, self.embed_dim)
 
         self.layer_norms_A = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(3)])
         self.layer_norms_B = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(3)])
@@ -349,8 +325,6 @@ class TransformerDecoderLayer(nn.Module):
         
         # Self Attention
         if self.src_mask: 
-            # print(x_A.shape) 
-            # print(x_B.shape)
             assert x_A.shape[0] == x_B.shape[0]
             mask = buffered_future_mask(x_A) 
             # print(x_A.shape) # torch.Size([20, 256, 32])
@@ -358,6 +332,7 @@ class TransformerDecoderLayer(nn.Module):
             # print(mask) 
         else: 
             mask = None
+
         x_aaa, _ = self.self_attn(x_A, x_A, x_A, attn_mask=mask)
         x_aab, _ = self.self_attn(x_A, x_A, x_B, attn_mask=mask)
         x_aba, _ = self.self_attn(x_A, x_B, x_A, attn_mask=mask)
@@ -405,15 +380,19 @@ class TransformerDecoderLayer(nn.Module):
         residual_A = x_A 
         residual_B = x_B
 
-        # # FC1
-        x_A = F.relu(self.fc1_A(x_A))
-        x_B = F.relu(self.fc1_B(x_B))
-        x_A = self.fc2_A(x_A)
-        x_B = self.fc2_B(x_B)
-        x_A = self.layer_norms_A[2](x_A)
-        x_B = self.layer_norms_B[2](x_B)
+        # FC1
+        x_A, x_B = self.fc1(x_A, x_B)        
+        x_A = F.relu(x_A)
+        x_B = F.relu(x_B)
         x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
+
+        # FC2
+        x_A, x_B = self.fc2(x_A, x_B)
+        x_A = self.layer_norms_A[2](x_A)
+        x_B = self.layer_norms_B[2](x_B)
+        x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
+        x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
         
         x_A += residual_A 
         x_B += residual_B 
