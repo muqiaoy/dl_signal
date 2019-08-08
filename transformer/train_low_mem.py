@@ -134,52 +134,51 @@ def train_model(settings):
 
 print(sys.argv)
 parser = argparse.ArgumentParser(description='Signal Data Analysis')
-parser.add_argument('-f', default='', type=str)
-parser.add_argument('--model', type=str, default='Transformer',
-                    help='name of the model to use (Transformer, etc.)')
-parser.add_argument('--data', type=str, default='music') 
-parser.add_argument('--path', type=str, default='data',
-                    help='path for storing the dataset')
-parser.add_argument('--time_step', type=int, default=2048,
-                    help='number of time step for each sequence(default: 2048)')
 parser.add_argument('--attn_dropout', type=float, default=0.0,
                     help='attention dropout')
-parser.add_argument('--relu_dropout', type=float, default=0.1,
-                    help='relu dropout')
-parser.add_argument('--res_dropout', type=float, default=0.1,
-                    help='residual block dropout')
-parser.add_argument('--out_dropout', type=float, default=0.5,
-                    help='hidden layer dropout')
-parser.add_argument('--embed_dropout', type=float, default=0.3,
-                    help='embed dimension dropout')
-parser.add_argument('--nlevels', type=int, default=6,
-                    help='number of layers in the network (if applicable) (default: 6)')
-parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
-                    help='lengths of each modality (default: [2048, 2048])')
+parser.add_argument('--attn_mask', action='store_true',
+                    help='use attention mask for Transformer (default: False)')
+parser.add_argument('--batch_size', type=int, default=1, metavar='N',
+                    help='batch size (default: 1)')
+parser.add_argument('--clip', type=float, default=0.35,
+                    help='gradient clip value (default: 0.35)')
+parser.add_argument('--crossmodal', action='store_false',
+                    help='determine whether use the crossmodal fusion or not (default: True)')
+parser.add_argument('--data', type=str, default='music')
 parser.add_argument('--embed_dim', type=int, default=128,
                     help='dimension of real and imag embeddimg before transformer (default: 100)')
-parser.add_argument('--output_dim', type=int, default=128,
-                    help='dimension of output (default: 128)')
+parser.add_argument('--embed_dropout', type=float, default=0.3,
+                    help='embed dimension dropout')
+parser.add_argument('--hidden_size', type=int, default=2000,
+                    help='hidden_size in transformer (default: 2000)')
+parser.add_argument('--lr', type=float, default=1e-3,
+                    help='initial learning rate (default: 1e-3)')
+parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
+                    help='lengths of each modality (default: [2048, 2048])')
+parser.add_argument('--model', type=str, default='Transformer',
+                    help='name of the model to use (Transformer, etc.)')
+parser.add_argument('--nlevels', type=int, default=6,
+                    help='number of layers in the network (if applicable) (default: 6)')
 parser.add_argument('--num_epochs', type=int, default=2000,
                     help='number of epochs (default: 2000)')
 parser.add_argument('--num_heads', type=int, default=8,
                     help='number of heads for the transformer network')
-parser.add_argument('--seed', type=int, default=1111,
-                    help='random seed')
-parser.add_argument('--batch_size', type=int, default=1, metavar='N',
-                    help='batch size (default: 1)')
-parser.add_argument('--attn_mask', action='store_true',
-                    help='use attention mask for Transformer (default: False)')
-parser.add_argument('--crossmodal', action='store_false',
-                    help='determine whether use the crossmodal fusion or not (default: True)')
-parser.add_argument('--lr', type=float, default=1e-3,
-                    help='initial learning rate (default: 1e-3)')
-parser.add_argument('--clip', type=float, default=0.35,
-                    help='gradient clip value (default: 0.35)')
 parser.add_argument('--optim', type=str, default='SGD',
                     help='optimizer to use (default: SGD)')
-parser.add_argument('--hidden_size', type=int, default=2000,
-                    help='hidden_size in transformer (default: 2000)')
+parser.add_argument('--out_dropout', type=float, default=0.5,
+                    help='hidden layer dropout')
+parser.add_argument('--output_dim', type=int, default=128,
+                    help='dimension of output (default: 128)')
+parser.add_argument('--path', type=str, default='data',
+                    help='path for storing the dataset')
+parser.add_argument('--relu_dropout', type=float, default=0.1,
+                    help='relu dropout')
+parser.add_argument('--res_dropout', type=float, default=0.1,
+                    help='residual block dropout')
+parser.add_argument('--seed', type=int, default=1111,
+                    help='random seed')
+parser.add_argument('--time_step', type=int, default=2048,
+                    help='number of time step for each sequence(default: 2048)')
 
 # For distributed
 #parser.add_argument("--local_rank", type=int)
