@@ -34,7 +34,6 @@ def train_transformer():
                              relu_dropout=args.relu_dropout,
                              res_dropout=args.res_dropout,
                              out_dropout=args.out_dropout,
-                             embed_dropout=args.embed_dropout,
                              layers=args.nlevels,
                              attn_mask=args.attn_mask,
                              crossmodal=args.crossmodal)

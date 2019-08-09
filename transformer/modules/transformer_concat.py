@@ -23,7 +23,7 @@ class TransformerEncoder(nn.Module):
         crossmodal (boo): whether we do cross-modal transformer or not
     """
 
-    def __init__(self, embed_dim, num_heads, layers, attn_dropout=0.0, relu_dropout=0.0, res_dropout=0.0, attn_mask=False, crossmodal=None):
+    def __init__(self, embed_dim, num_heads, layers, attn_dropout, relu_dropout, res_dropout, attn_mask=False, crossmodal=None):
         super().__init__()
         self.dropout = 0.3      # Embedding dropout
         self.attn_dropout = attn_dropout
@@ -178,13 +178,6 @@ class TransformerEncoderLayer(nn.Module):
         
 
         return x
-
-    def maybe_layer_norm(self, i, x, before=False, after=False):
-        assert before ^ after
-        if after ^ self.normalize_before:
-            return self.layer_norms[i](x)
-        else:
-            return x
 
 class TransformerDecoder(nn.Module):
     """
