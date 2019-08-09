@@ -147,8 +147,6 @@ parser.add_argument('--crossmodal', action='store_false',
 parser.add_argument('--data', type=str, default='music')
 parser.add_argument('--embed_dim', type=int, default=128,
                     help='dimension of real and imag embeddimg before transformer (default: 100)')
-parser.add_argument('--embed_dropout', type=float, default=0.3,
-                    help='embed dimension dropout')
 parser.add_argument('--hidden_size', type=int, default=2000,
                     help='hidden_size in transformer (default: 2000)')
 parser.add_argument('--lr', type=float, default=1e-3,

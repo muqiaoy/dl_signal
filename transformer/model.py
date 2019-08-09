@@ -16,7 +16,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, ntokens, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, embed_dropout, layers, attn_mask=False, crossmodal=False):
+    def __init__(self, ntokens, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, attn_mask=False, crossmodal=False):
         """
         Construct a basic Transfomer model for multimodal tasks.
         
@@ -31,13 +31,13 @@ class TransformerModel(nn.Module):
         :param crossmodal: Use Crossmodal Transformer or Not
         """
         super(TransformerModel, self).__init__()
-        self.cnn = ComplexSequential(
-            ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=2),
+        self.conv = ComplexSequential(
+            ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
             ComplexBatchNorm1d(16),
             ComplexReLU(),
             ComplexMaxPool1d(2, stride=2),
 
-            ComplexConv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
+            ComplexConv1d(in_channels=16, out_channels=32, kernel_size=3, stride=1),
             ComplexBatchNorm1d(32),
             ComplexReLU(),
             ComplexMaxPool1d(2, stride=2),
@@ -60,7 +60,7 @@ class TransformerModel(nn.Module):
             )
         [self.orig_d_a, self.orig_d_b] = input_dims
         assert self.orig_d_a == self.orig_d_b
-        channels = ((((((((((self.orig_d_a -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
+        channels = ((((((((((self.orig_d_a -6)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 
             -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1
         self.d_a, self.d_b = 128*channels, 128*channels
         self.ntokens = ntokens
@@ -71,7 +71,6 @@ class TransformerModel(nn.Module):
         self.attn_dropout = attn_dropout
         self.relu_dropout = relu_dropout
         self.res_dropout = res_dropout
-        self.embed_dropout = embed_dropout
         self.attn_mask = attn_mask
         self.embed_dim = embed_dim
         self.crossmodal = crossmodal
@@ -90,7 +89,7 @@ class TransformerModel(nn.Module):
     def get_network(self):
         
         return TransformerEncoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
-            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, embed_dropout=self.embed_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
+            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
             
     def forward(self, x):
         """
@@ -105,7 +104,7 @@ class TransformerModel(nn.Module):
         input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
         input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
 
-        input_a, input_b = self.cnn(input_a, input_b)
+        input_a, input_b = self.conv(input_a, input_b)
         input_a = input_a.reshape(time_step, batch_size, self.d_a)
         input_b = input_b.reshape(time_step, batch_size, self.d_b)
         input_a, input_b = self.proj(input_a, input_b)
@@ -134,13 +133,13 @@ class TransformerGenerationModel(nn.Module):
         l = a, a = b 
         """
         super(TransformerGenerationModel, self).__init__()
-        self.cnn = ComplexSequential(
-            ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=2),
+        self.conv = ComplexSequential(
+            ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
             ComplexBatchNorm1d(16),
             ComplexReLU(),
             ComplexMaxPool1d(2, stride=2),
 
-            ComplexConv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2),
+            ComplexConv1d(in_channels=16, out_channels=32, kernel_size=3, stride=1),
             ComplexBatchNorm1d(32),
             ComplexReLU(),
             ComplexMaxPool1d(2, stride=2),
@@ -163,7 +162,7 @@ class TransformerGenerationModel(nn.Module):
             )
         [self.orig_d_a, self.orig_d_b] = input_dims
         assert self.orig_d_a == self.orig_d_b
-        channels = ((((((((((self.orig_d_a -6)//2+1 -2)//2+1 -3)//2+1 -2)//2+1 
+        channels = ((((((((((self.orig_d_a -6)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 
             -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1
         self.d_a, self.d_b = 128*channels, 128*channels
         self.ntokens = ntokens
@@ -219,7 +218,7 @@ class TransformerGenerationModel(nn.Module):
         input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
         input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
 
-        input_a, input_b = self.cnn(input_a, input_b)
+        input_a, input_b = self.conv(input_a, input_b)
         input_a = input_a.reshape(-1, batch_size, self.d_a)
         input_b = input_b.reshape(-1, batch_size, self.d_b)
         input_a, input_b = self.proj_enc(input_a, input_b)
@@ -265,16 +264,16 @@ class TransformerGenerationModel(nn.Module):
         # print(y.shape)
         # print(self.orig_d_l)
 
-        batch_size, seq_len, n_features2 = y.shape 
+        seq_len, batch_size, n_features2 = y.shape 
         n_features = n_features2 // 2
 
-        y_a = y[:, :-1, :self.orig_d_a]                               # truncate last target 
-        y_b = y[:, :-1, self.orig_d_a: self.orig_d_a + self.orig_d_b] # truncate last target 
+        y_a = y[:-1, :, :self.orig_d_a]                               # truncate last target 
+        y_b = y[:-1, :, self.orig_d_a: self.orig_d_a + self.orig_d_b] # truncate last target 
 
-        sos_a = torch.zeros(batch_size, 1, n_features).cuda()
-        sos_b = torch.zeros(batch_size, 1, n_features).cuda()
-        y_a = torch.cat([sos_a, y_a], dim=1)    # add <sos> to front 
-        y_b = torch.cat([sos_b, y_b], dim=1)    # add <sos> to front 
+        sos_a = torch.zeros(1, batch_size, n_features).cuda()
+        sos_b = torch.zeros(1, batch_size, n_features).cuda()
+        y_a = torch.cat([sos_a, y_a], dim=0)    # add <sos> to front 
+        y_b = torch.cat([sos_b, y_b], dim=0)    # add <sos> to front 
 
         y_a, y_b = self.proj_dec(y_a, y_b)
         out_as, out_bs = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)

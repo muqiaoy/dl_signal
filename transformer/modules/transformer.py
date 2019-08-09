@@ -23,9 +23,9 @@ class TransformerEncoder(nn.Module):
         crossmodal (boo): whether we do cross-modal transformer or not
     """
 
-    def __init__(self, embed_dim, num_heads, layers, attn_dropout, relu_dropout, res_dropout, embed_dropout, attn_mask=False, crossmodal=None):
+    def __init__(self, embed_dim, num_heads, layers, attn_dropout, relu_dropout, res_dropout, attn_mask=False, crossmodal=None):
         super().__init__()
-        self.dropout = embed_dropout      # Embedding dropout
+        self.dropout = 0.3      # Embedding dropout
         self.attn_dropout = attn_dropout
         self.embed_dim = embed_dim
         self.embed_scale = 1
@@ -268,6 +268,13 @@ class TransformerDecoder(nn.Module):
             return self.max_source_positions
         return min(self.max_source_positions, self.embed_positions.max_positions())
 
+    def scale_embed_position_dropout(self, x_in):
+        x = self.embed_scale * x_in
+        if self.embed_positions is not None:
+            x += self.embed_positions(x_in.transpose(0, 1)[:, :, 0]).transpose(0, 1)
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        return x
+
 
 class TransformerDecoderLayer(nn.Module): 
     def __init__(self, embed_dim, num_heads=4, src_attn_dropout=0.1, relu_dropout=0.1, res_dropout=0.1, tgt_attn_dropout=0.1, src_mask=True, tgt_mask=False):
@@ -279,8 +286,8 @@ class TransformerDecoderLayer(nn.Module):
             num_heads=self.num_heads,
             attn_dropout=src_attn_dropout,
             bias=True,
-            add_bias_kv=False,
-            add_zero_attn=False, 
+            add_bias_kv=True,
+            add_zero_attn=True, 
         )
         # self.attn_mask = attn_mask
         # self.crossmodal = True
@@ -297,8 +304,8 @@ class TransformerDecoderLayer(nn.Module):
             num_heads=self.num_heads, 
             attn_dropout=tgt_attn_dropout, 
             bias=True,
-            add_bias_kv=False, 
-            add_zero_attn=False, 
+            add_bias_kv=True, 
+            add_zero_attn=True, 
         )
 
         self.fc1 = ComplexLinear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper

@@ -65,13 +65,6 @@ class MultiheadAttention(nn.Module):
         assert list(query.size()) == [tgt_len, bsz, embed_dim]
         assert key.size() == value.size()
 
-        # print("qkv_same: %s" % (str(qkv_same))) 
-        # print("kv_same: %s" % (str(kv_same))) 
-
-        # print("query.size(): %s" % (str(query.size())))
-        # print("key.size(): %s" % str(key.size())) 
-        # print("value.size(): %s" % str(value.size()))
-
         aved_state = None
 
         # projecting q, k, v 
@@ -96,106 +89,47 @@ class MultiheadAttention(nn.Module):
         # extending k, v by one time step at the end, with self.bias_k and self.bias_v 
         if self.bias_k is not None:
             assert self.bias_v is not None
-            # print("<self.bias_k not None>")
-            # print("k.size(): %s" % str(k.size()))
-            # print("v.size(): %s" % str(v.size()))
-            # k.size(): torch.Size([30, 256, 32])
-            # v.size(): torch.Size([30, 256, 32])
 
             k = torch.cat([k, self.bias_k.repeat(1, bsz, 1)])
             v = torch.cat([v, self.bias_v.repeat(1, bsz, 1)])
 
-            # print("self.bias_k.size(): %s" % str(self.bias_k.size()))
-            # print("self.bias_v.size(): %s" % str(self.bias_v.size()))
-            # print("self.bias_k.repeat(1, bsz, 1).size() %s" % str(self.bias_k.repeat(1, bsz, 1).size()))
-            # print("k.size(): %s" % str(k.size()))
-            # print("v.size(): %s" % str(v.size()))
-            # self.bias_k.size(): torch.Size([1, 1, 32])
-            # self.bias_v.size(): torch.Size([1, 1, 32])
-            # self.bias_k.repeat(1, bsz, 1).size() torch.Size([1, 256, 32])
-            # k.size(): torch.Size([31, 256, 32])
-            # v.size(): torch.Size([31, 256, 32])
-
             if attn_mask is not None:
-                print("self.bias_k not None") 
-                print("attn_mask.shape")
-                print(attn_mask.shape) 
                 attn_mask = torch.cat([attn_mask, attn_mask.new_zeros(attn_mask.size(0), 1)], dim=1)
 
         q = q.contiguous().view(tgt_len, bsz * self.num_heads, self.head_dim).transpose(0, 1)
         if k is not None:
             k = k.contiguous().view(-1, bsz * self.num_heads, self.head_dim).transpose(0, 1)
-            # k.size(): torch.Size([2048, 31, 4]), head_dim=4, num_heads=8
         if v is not None:
             v = v.contiguous().view(-1, bsz * self.num_heads, self.head_dim).transpose(0, 1)
-            # v.size(): torch.Size([2048, 31, 4]), head_dim=4, num_heads=8
 
         src_len = k.size(1)
 
         # extending k, v by another time step at the end, (bsz * num_heads, 1, head_dim) of zeros 
         if self.add_zero_attn:
-            # print("< self.add_zero_attn > ") 
-            # print("k.size(): %s" % str(k.size()))
-            # print("v.size(): %s" % str(v.size()))
-            # k.size(): torch.Size([2048, 31, 4])
-            # v.size(): torch.Size([2048, 31, 4])
 
             src_len += 1
             k = torch.cat([k, k.new_zeros((k.size(0), 1) + k.size()[2:])], dim=1)
             v = torch.cat([v, v.new_zeros((v.size(0), 1) + v.size()[2:])], dim=1)
-            # print("k.size(): %s" % str(k.size()))
-            # print("v.size(): %s" % str(v.size()))
-            # print("k.size(0): %d" % k.size(0))
-            # print("v.size(0): %d" % v.size(0))
-            # print("k.size()[2:]: %s" % str(k.size()[2:]))
-            # print("k.size()[2:]: %s" % str(k.size()[2:]))
-            # k.size(): torch.Size([2048, 32, 4])
-            # v.size(): torch.Size([2048, 32, 4])
-            # k.size(0): 2048, bsz * num_heads
-            # v.size(0): 2048, bsz * num_heads 
-            # k.size()[2:]: torch.Size([4])
-            # k.size()[2:]: torch.Size([4])
+
             if attn_mask is not None:
-                print("self.add_zero_attn")
-                print("attn_mask.shape")
-                print(attn_mask.shape) 
                 attn_mask = torch.cat([attn_mask, attn_mask.new_zeros(attn_mask.size(0), 1)], dim=1)
 
         attn_weights = torch.bmm(q, k.transpose(1, 2))
         assert list(attn_weights.size()) == [bsz * self.num_heads, tgt_len, src_len]
-        # q: (bsz * num_heads, tgt_len, head_dim)
-        # k.transpose(1, 2): (bsz * num_heads, head_dim, src_len + 2) 
 
         if attn_mask is not None:
             try:
-                # print("attn_mask not None")
-                # print("attn_weights.shape") 
-                # print(attn_weights.shape) 
-                # print("attn_mask.shape")
-                # print(attn_mask.shape) 
-                # # print(attn_mask) 
-                # print('attn_mask.unsqueeze(0).shape')
-                # print(attn_mask.unsqueeze(0).shape)
-                # print("attn_weights.shape")
-                # print(attn_weights.shape)
-
-                # attn_weights += attn_mask.unsqueeze(0)
                 attn_weights *= attn_mask.unsqueeze(0)
             except:
                 print(attn_weights.shape)
                 print(attn_mask.unsqueeze(0).shape)
                 assert False
 
-        # attn_weights = F.softmax(attn_weights.float(), dim=-1).type_as(attn_weights)
         attn_weights = (attn_weights - torch.min(attn_weights)) / (torch.max(attn_weights) - torch.min(attn_weights))
-        # attn_weights = F.relu(attn_weights)
-        # attn_weights = attn_weights / torch.max(attn_weights)
         attn_weights = F.dropout(attn_weights, p=self.attn_dropout, training=self.training)
 
         attn = torch.bmm(attn_weights, v)
         assert list(attn.size()) == [bsz * self.num_heads, tgt_len, self.head_dim]
-        # attn_weights: (bsz * num_heads, tgt_len, src_len + 2) 
-        # v: (bsz * num_heads, src_len + 2, head_dim) 
 
         attn = attn.transpose(0, 1).contiguous().view(tgt_len, bsz, embed_dim)
         attn = self.out_proj(attn)
