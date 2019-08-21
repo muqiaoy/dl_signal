@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from utils import SignalDataset_iq, SignalDataset_music_Low_Mem, count_parameters
 import argparse
-from model import *
+from model_concat import *
 import torch.optim as optim
 import numpy as np
 import time
@@ -35,6 +35,7 @@ def train_transformer():
                              attn_dropout=args.attn_dropout,
                              relu_dropout=args.relu_dropout,
                              res_dropout=args.res_dropout,
+                             out_dropout=args.out_dropout,
                              layers=args.nlevels,
                              horizons=args.nhorizons,
                              attn_mask=args.attn_mask,
@@ -45,7 +46,6 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
-    # criterion = nn.CrossEntropyLoss()
     criterion= nn.BCEWithLogitsLoss() 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
@@ -77,10 +77,10 @@ def train_model(settings):
 
         for i_batch, (data_batched, label_batched) in enumerate(train_loader):
             cur_batch_size = len(data_batched) 
-            src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
-            src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
-            trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-            trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
+            src = data_batched[:, 0:src_time_step, :].transpose(1, 0).float().cuda()
+            src_label = label_batched[:, 0:src_time_step, :].transpose(1, 0).cuda()
+            trg = data_batched[:, src_time_step: , :].transpose(1, 0).float().cuda()
+            trg_label = label_batched[:, src_time_step: , :].transpose(1, 0).cuda()
 
             # clear gradients
             model.zero_grad() 
@@ -96,24 +96,16 @@ def train_model(settings):
 
         return avg_loss
 
-        # return epoch_loss / len(training_set), float(total_correct)/float(total_pred)
-
     def evaluate(model, criterion):
         model.eval()
         epoch_loss = 0
-
-#         results = []
-#         truths = []
         with torch.no_grad():
             for i_batch, (data_batched, label_batched) in enumerate(test_loader):
                 cur_batch_size = len(data_batched)
-                src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
-                src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
-                trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-                trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
-
-                # clear gradients
-                model.zero_grad()
+                src = data_batched[:, 0:src_time_step, :].transpose(1, 0).float().cuda()
+                src_label = label_batched[:, 0:src_time_step, :].transpose(1, 0).cuda()
+                trg = data_batched[:, src_time_step: , :].transpose(1, 0).float().cuda()
+                trg_label = label_batched[:, src_time_step: , :].transpose(1, 0).cuda()
                 outputs = model(x=src, y=trg)
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
                 epoch_loss += loss
@@ -171,6 +163,8 @@ parser.add_argument('--relu_dropout', type=float, default=0.1,
                     help='relu dropout')
 parser.add_argument('--res_dropout', type=float, default=0.1,
                     help='residual block dropout')
+parser.add_argument('--out_dropout', type=float, default=0.5,
+                    help='output dropout')
 parser.add_argument('--nlevels', type=int, default=6,
                     help='number of layers in the network (if applicable) (default: 6)')
 parser.add_argument('--nhorizons', type=int, default=1)
