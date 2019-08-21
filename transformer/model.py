@@ -116,7 +116,7 @@ class TransformerModel(nn.Module):
         return output
 
 class TransformerGenerationModel(nn.Module):
-    def __init__(self, ntokens, input_dims, hidden_size, embed_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
+    def __init__(self, ntokens, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
         """
         Construct a basic Transfomer model for multimodal tasks.
         
@@ -192,7 +192,7 @@ class TransformerGenerationModel(nn.Module):
         
         self.out_fc1 = nn.Linear(final_out, h_out)
         
-        self.out_fc2 = nn.Linear(h_out, self.orig_d_a + self.orig_d_b)
+        self.out_fc2 = nn.Linear(h_out, output_dim)
         
         self.out_dropout = nn.Dropout(0.5)
 
@@ -211,10 +211,6 @@ class TransformerGenerationModel(nn.Module):
         """
 
         time_step, batch_size, n_features = x.shape
-        # even_indices = torch.tensor([i for i in range(n_features) if i % 2 == 0]).to(device=device)
-        # odd_indices = torch.tensor([i for i in range(n_features) if i % 2 == 1]).to(device=device)
-        # input_a = torch.index_select(x, 2, even_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
-        # input_b = torch.index_select(x, 2, odd_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
         input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
         input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
 
@@ -224,46 +220,6 @@ class TransformerGenerationModel(nn.Module):
         input_a, input_b = self.proj_enc(input_a, input_b)
         # Pass the input through individual transformers
         h_as, h_bs = self.trans_encoder(input_a, input_b)
-
-
-        # Some interesting behavior here;
-        # First the larger the model size, the larger the range
-        # Second the data pattern will be (+, -, +, -, ...) if time_step = 5
-        # Should choose time_step = even number
-
-        # Fuse the hidden vectors from each modality, and pass through one multimodal transformer
-        # last_h_ls = h_ls[-1]
-        # last_h_as = h_as[-1]
-        # h_concat = torch.cat([last_h_ls, last_h_as], dim=-1)
-        # h_concat = self.proj(h_concat)
-
-        # concat all time steps
-        # h_ls = torch.transpose(h_ls, 0, 1)
-        # h_as = torch.transpose(h_as, 0, 1) 
-        # h_ls = h_ls.reshape(batch_size, -1)
-        # h_as = h_as.reshape(batch_size, -1) 
-        # h_concat = torch.cat([h_ls, h_as], dim=-1)
-
-         # concat last time steps of all horizons 
-        # h_ls_as_each_catted = [torch.cat([h_ls_as[i][0][-1], h_ls_as[i][1][-1]], dim=-1) for i in range(self.horizons)]
-        # h_concat = torch.cat(h_ls_as_each_catted, dim=-1)
-
-        # output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
-
-        # print("h_ls_as[0][0].shape") # (list dim = horizons, tuple dim = 2, Tensor(10 (TS), 256 (BS), 160 (a_dim/b_dim)))
-        # print(h_ls_as[0][0].shape) 
-        # print("h_ls_as_each_catted[0].shape") # (horizons, Tensor(BS, a_dim + b_dim))
-        # print(h_ls_as_each_catted[0].shape)
-        # print("h_concat.shape")  # (BS, (a_dim + b_dim) * horizons) 
-        # print(h_concat.shape) 
-        # print("output.shape") $ (BS, output_dim)
-        # print(output.shape)
-        # exit()
-
-        # DECODER: ASSUME self.horizons = 1
-        # print(y.shape)
-        # print(self.orig_d_l)
-
         seq_len, batch_size, n_features2 = y.shape 
         n_features = n_features2 // 2
 
