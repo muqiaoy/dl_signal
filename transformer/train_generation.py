@@ -35,6 +35,7 @@ def train_transformer():
                              attn_dropout=args.attn_dropout,
                              relu_dropout=args.relu_dropout,
                              res_dropout=args.res_dropout,
+                             out_dropout=args.out_dropout,
                              layers=args.nlevels,
                              horizons=args.nhorizons,
                              attn_mask=args.attn_mask,
@@ -171,6 +172,8 @@ parser.add_argument('--relu_dropout', type=float, default=0.1,
                     help='relu dropout')
 parser.add_argument('--res_dropout', type=float, default=0.1,
                     help='residual block dropout')
+parser.add_argument('--out_dropout', type=float, default=0.5,
+                    help='output dropout')
 parser.add_argument('--nlevels', type=int, default=6,
                     help='number of layers in the network (if applicable) (default: 6)')
 parser.add_argument('--nhorizons', type=int, default=1)
