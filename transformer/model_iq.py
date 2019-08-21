@@ -31,38 +31,9 @@ class TransformerModel(nn.Module):
         :param crossmodal: Use Crossmodal Transformer or Not
         """
         super(TransformerModel, self).__init__()
-        self.conv = ComplexSequential(
-            ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
-            ComplexBatchNorm1d(16),
-            ComplexReLU(),
-            ComplexMaxPool1d(2, stride=2),
-
-            ComplexConv1d(in_channels=16, out_channels=32, kernel_size=3, stride=1),
-            ComplexBatchNorm1d(32),
-            ComplexReLU(),
-            ComplexMaxPool1d(2, stride=2),
-
-            ComplexConv1d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
-            ComplexBatchNorm1d(64),
-            ComplexReLU(),
-            ComplexMaxPool1d(2, stride=2),
-
-            ComplexConv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
-            ComplexBatchNorm1d(64),
-            ComplexReLU(),
-            ComplexMaxPool1d(2, stride=2),
-
-            ComplexConv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
-            ComplexBatchNorm1d(128),
-            ComplexReLU(),
-            ComplexMaxPool1d(2, stride=2),
-            ComplexFlatten(),
-            )
         [self.orig_d_a, self.orig_d_b] = input_dims
         assert self.orig_d_a == self.orig_d_b
-        channels = ((((((((((self.orig_d_a -6)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 
-            -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1
-        self.d_a, self.d_b = 128*channels, 128*channels
+        self.d_a, self.d_b = 512, 512 
         self.ntokens = ntokens
         final_out = embed_dim * 2
         h_out = hidden_size
@@ -78,6 +49,8 @@ class TransformerModel(nn.Module):
         # Transformer networks
         self.trans = self.get_network()
         print("Encoder Model size: {0}".format(count_parameters(self.trans)))
+        self.fc_a = nn.Linear(self.orig_d_a, self.d_a)
+        self.fc_b = nn.Linear(self.orig_d_b, self.d_b)
         # Projection layers
         self.proj = ComplexLinear(self.d_a, self.embed_dim)
         
@@ -93,26 +66,19 @@ class TransformerModel(nn.Module):
             
     def forward(self, x):
         """
-        x should have dimension [batch_size, seq_len, n_features] (i.e., N, L, C).
+        x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).
         """
         time_step, batch_size, n_features = x.shape
 
-        # even_indices = torch.tensor([i for i in range(n_features) if i % 2 == 0]).to(device=device)
-        # odd_indices = torch.tensor([i for i in range(n_features) if i % 2 == 1]).to(device=device)
-        # input_a = torch.index_select(x, 2, even_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
-        # input_b = torch.index_select(x, 2, odd_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
-        input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
-        input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
-
-        input_a, input_b = self.conv(input_a, input_b)
-        input_a = input_a.reshape(time_step, batch_size, self.d_a)
-        input_b = input_b.reshape(time_step, batch_size, self.d_b)
+        input_a = x[:, :, :n_features//2]
+        input_b = x[:, :, n_features//2:]
+        """Add linear layer here"""
+        input_a = self.fc_a(input_a)
+        input_b = self.fc_b(input_b)
         input_a, input_b = self.proj(input_a, input_b)
-        # Pass the input through individual transformers
         h_as, h_bs = self.trans(input_a, input_b)
-        h_concat = torch.cat([h_as, h_bs], dim=-1)
+        h_concat = torch.cat([h_as[-1], h_bs[-1]], dim=-1)
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
-        # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stable
         return output
 
 class TransformerGenerationModel(nn.Module):
@@ -209,8 +175,8 @@ class TransformerGenerationModel(nn.Module):
         """
         x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).  
         """
+
         time_step, batch_size, n_features = x.shape
-        print(x.shape)
         # even_indices = torch.tensor([i for i in range(n_features) if i % 2 == 0]).to(device=device)
         # odd_indices = torch.tensor([i for i in range(n_features) if i % 2 == 1]).to(device=device)
         # input_a = torch.index_select(x, 2, even_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
@@ -263,6 +229,7 @@ class TransformerGenerationModel(nn.Module):
         # DECODER: ASSUME self.horizons = 1
         # print(y.shape)
         # print(self.orig_d_l)
+
         seq_len, batch_size, n_features2 = y.shape 
         n_features = n_features2 // 2
 
