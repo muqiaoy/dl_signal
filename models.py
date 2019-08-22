@@ -499,22 +499,21 @@ class Encoder_LSTM(nn.Module):
         return hidden, cell
 
 class Decoder_LSTM(nn.Module):
-    def __init__(self, input_dim, hid_dim, n_layers, fc_hidden_dim, dropout):
+    def __init__(self, input_dim, output_dim, hid_dim, n_layers, fc_hidden_dim, dropout):
         super().__init__()
 
         self.input_dim = input_dim
         self.hid_dim = hid_dim
         self.output_dim = input_dim
+        self.final_output_dim = output_dim
         self.n_layers = n_layers
         self.fc_hidden_dim = fc_hidden_dim 
         self.dropout = dropout
-
-        # assert input_dim == output_dim \
+        #assert input_dim == output_dim \
         #     "Decoder nust have smae input and output dimensions"
     
         self.lstm = nn.LSTM(input_dim, hid_dim, n_layers, dropout = dropout)
         
-        # self.out = nn.Linear(hid_dim, self.output_dim)
         self.fc1 = nn.Linear(self.hid_dim, self.fc_hidden_dim) 
         self.fc2 = nn.Linear(self.fc_hidden_dim, self.output_dim) 
         
@@ -528,13 +527,7 @@ class Decoder_LSTM(nn.Module):
         #context = [n layers, batch size, hid dim]
         
         input = input.unsqueeze(0) # inserting a new dimension to be seq len 
-    
-        # print("input.shape")
-        # print(input.shape)
-
-        #input = [1, batch size, input_dim]
         output, (hidden, cell) = self.lstm(input, (hidden, cell))
-        
         #output = [sent len, batch size, hid dim * n directions]
         #hidden = [n layers * n directions, batch size, hid dim]
         #cell = [n layers * n directions, batch size, hid dim]
@@ -549,6 +542,7 @@ class Decoder_LSTM(nn.Module):
 
         # prediction = self.out(output.squeeze(0)) # unsqueezE: [1, batch size, hid dim] -> [batch size, hid dim]
         prediction = self.fc2(F.relu(self.fc1(output.squeeze(0))))
+        # print("prediction")
         
         #prediction = [batch size, output dim]
         # print("perdiction.shape")
@@ -563,19 +557,13 @@ class Seq2Seq(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
         self.device = device
-        
+        self.out_fc = nn.Linear(decoder.output_dim, decoder.final_output_dim)
         assert encoder.hid_dim == decoder.hid_dim, \
             "Hidden dimensions of encoder and decoder must be equal!"
         assert encoder.n_layers == decoder.n_layers, \
             "Encoder and decoder must have equal number of layers!"
         
     def forward(self, src, trg, teacher_forcing_ratio=0.0):
-        
-        #src = [src sent len, batch size, src input size]
-        #trg = [trg sent len, batch size, trg input size] 
-        #teacher_forcing_ratio is probability to use teacher forcing
-        #e.g. if teacher_forcing_ratio is 0.75 we use ground-truth inputs 75% of the time
-        
         batch_size = trg.shape[1]
         max_len = trg.shape[0]
         trg_input_size = trg.shape[2] 
@@ -599,7 +587,7 @@ class Seq2Seq(nn.Module):
             # top1 = output.max(1)[1]
             # input = (trg[t] if teacher_force else top1)
             input = (trg[t] if teacher_force else output)              # REQUIRES: ouput_dim = input_dim 
-        
+        outputs = self.out_fc(outputs) 
         return outputs # (seq_len, bs, output_dim)
 
 def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device):
@@ -608,27 +596,15 @@ def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, c
         model.eval()
         
         epoch_loss = 0 
-        for data_batched, _ in data_loader:
+        for data_batched, label_batched in data_loader:
             cur_batch_size = len(data_batched) 
-
-            # src = data_batched[:, 0 : src_time_step * input_size] 
-            # trg = data_batched[:, src_time_step * input_size : ]
-            # src = src.reshape(cur_batch_size, src_time_step, input_size) 
-            # trg = trg.reshape(cur_batch_size, trg_time_step, input_size)
-            src = data_batched[:, 0 : src_time_step, :] 
-            trg = data_batched[:, src_time_step : , :] 
-            src = src.transpose(1, 0) # (ts, bs, input_size)
-            trg = trg.transpose(1, 0) # (ts, bs, input_size)
-            src = src.float().to(device=device)
-            trg = trg.float().to(device=device)
-
+            src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
+            src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
+            trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
+            trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
 
             outputs = model(src=src, trg=trg) # (ts, bs, input_size)
-
-            trg = trg.transpose(1, 0).reshape(cur_batch_size, -1)
-            outputs = outputs.transpose(1, 0).reshape(cur_batch_size, -1)
-
-            loss = criterion(outputs, trg)
+            loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
             epoch_loss += loss 
 
         avg_loss = epoch_loss / float(len(data_loader))

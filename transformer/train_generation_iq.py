@@ -5,9 +5,9 @@ sys.path.insert(0,parentdir)
 
 import torch
 from torch import nn
-from utils import SignalDataset_iq, SignalDataset_music_Low_Mem, count_parameters
+from utils import SignalDataset_iq, count_parameters
 import argparse
-from model import *
+from model_iq import *
 import torch.optim as optim
 import numpy as np
 import time
@@ -25,10 +25,8 @@ def train_transformer():
         input_size = 4096 
     input_dim = int(input_size / 2) 
 
-    model = TransformerGenerationModel(ntokens=10000,        # TODO: wait for Paul's data
-                             # time_step=args.time_step,
+    model = TransformerGenerationModel(ntokens=10000,      
                              input_dims=[input_dim, input_dim],
-                             # proj_dims=args.modal_lengths,
                              hidden_size=args.hidden_size,
                              embed_dim=args.embed_dim,
                              output_dim=args.output_dim,
@@ -48,7 +46,7 @@ def train_transformer():
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
     # criterion = nn.CrossEntropyLoss()
-    criterion= nn.BCEWithLogitsLoss() 
+    criterion= nn.CrossEntropyLoss() 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
@@ -74,20 +72,18 @@ def train_model(settings):
 
     def train(model, optimizer, criterion):
         epoch_loss = 0
-        
         model.train()
 
         for i_batch, (data_batched, label_batched) in enumerate(train_loader):
             cur_batch_size = len(data_batched) 
             src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
-            src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
             trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-            trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
+            trg_label = label_batched.cuda()
 
             # clear gradients
             model.zero_grad() 
             outputs = model(x=src, y=trg) 
-            loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
+            loss = criterion(outputs, trg_label)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
@@ -110,14 +106,11 @@ def train_model(settings):
             for i_batch, (data_batched, label_batched) in enumerate(test_loader):
                 cur_batch_size = len(data_batched)
                 src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
-                src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
                 trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-                trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
-
-                # clear gradients
-                model.zero_grad()
+                trg_label = label_batched.cuda()
+               
                 outputs = model(x=src, y=trg)
-                loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
+                loss = criterion(outputs, trg_label)
                 epoch_loss += loss
         avg_loss = epoch_loss / float(len(test_loader))
         return avg_loss
@@ -235,11 +228,9 @@ print("Start loading the data....")
 if args.data == 'iq': 
     training_set = SignalDataset_iq(args.path, time_step=total_time_step, train=True)
     test_set = SignalDataset_iq(args.path, time_step=total_time_step, train=False)
-else: 
-    assert(total_time_step == 128 or total_time_step == 64)
-    training_set = SignalDataset_music_Low_Mem(args.path, time_step=total_time_step, train=True)
-    test_set = SignalDataset_music_Low_Mem(args.path, time_step=total_time_step, train=False)
-
+else:
+    print("This file is for iq dataset only.")
+    assert False
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
 
