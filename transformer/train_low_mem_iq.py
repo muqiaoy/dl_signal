@@ -71,8 +71,6 @@ def train_model(settings):
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
             model.zero_grad()
             batch_X = batch_X.transpose(0, 1)
-            # print(batch_X.shape) : (batch_size, time=20, feature_dim=160)
-            # print(batch_y.shape):  (batch_size,)
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.to(device=device)
             preds = model(batch_X)
             loss = criterion(preds, batch_y)

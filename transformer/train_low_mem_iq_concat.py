@@ -6,7 +6,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 from utils import SignalDataset_iq
 import argparse
-from model_iq import *
+from model_iq_concat import *
 import torch.optim as optim
 import numpy as np
 import time

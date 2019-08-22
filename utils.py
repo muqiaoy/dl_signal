@@ -116,7 +116,7 @@ class SignalDataset_iq(Dataset):
         self.data = self.data.reshape(self.len, time_step, -1) 
 
         self.num_classes = self.label.shape[-1]
-        self.label = self.label.reshape(-1, self.num_classes) # (# data, 1)
+        self.label = self.label.reshape(self.len, self.num_classes) # (# data, 1)
         self.label = np.argmax(self.label, axis=1)
 
     def __len__(self):
