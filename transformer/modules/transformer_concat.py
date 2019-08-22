@@ -196,17 +196,14 @@ class TransformerDecoder(nn.Module):
 
     def __init__(self, embed_dim, num_heads, layers, src_attn_dropout=0.0, relu_dropout=0.0, res_dropout=0.0, tgt_attn_dropout=0.0, crossmodal=None):
         super().__init__()
-        self.dropout = 0      # Embedding dropout
+        self.dropout = 0.3      # Embedding dropout
         # self.attn_dropout = attn_dropout
         self.embed_dim = embed_dim
         self.embed_scale = 1
         # self.embed_scale = math.sqrt(embed_dim)
         self.embed_positions = SinusoidalPositionalEmbedding(embed_dim)
-        
         # self.crossmodal = crossmodal
-        
         # self.attn_mask = attn_mask
-
         self.layers = nn.ModuleList([])
         self.layers.extend([
             TransformerDecoderLayer(embed_dim=embed_dim,
@@ -220,26 +217,13 @@ class TransformerDecoder(nn.Module):
         ])
         self.register_buffer('version', torch.Tensor([2]))
 
-    def forward(self, input_A, input_B, enc_A, enc_B):
-        """
-        Args:
-            x_in (FloatTensor): embedded input of shape `(src_len, batch, embed_dim)`
-            x_in_k (FloatTensor): embedded input of shape `(src_len, batch, embed_dim) if cross-modal`
-            x_in_v (FloatTensor): embedded input of shape `(src_len, batch, embed_dim) if cross-modal`
-        Returns:
-            dict:
-                - **encoder_out** (Tensor): the last encoder layer's output of
-                  shape `(src_len, batch, embed_dim)`
-                - **encoder_padding_mask** (ByteTensor): the positions of
-                  padding elements of shape `(batch, src_len)`
-        """
-        input_A = self.scale_embed_position_dropout(input_A)
-        input_B = self.scale_embed_position_dropout(input_B)
+    def forward(self, input, enc):
+        input = self.scale_embed_position_dropout(input)
         
         # For each transformer encoder layer:
         for layer in self.layers:
-            input_A, input_B = layer(input_A, input_B, enc_A, enc_B)
-        return input_A, input_B
+            input = layer(input, enc)
+        return input
 
     def max_positions(self):
         """Maximum input length supported by the encoder."""
@@ -288,102 +272,46 @@ class TransformerDecoderLayer(nn.Module):
             add_zero_attn=False, 
         )
 
-        self.fc1_A = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_A = Linear(self.embed_dim, self.embed_dim)
-        self.fc1_B = Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2_B = Linear(self.embed_dim, self.embed_dim)
+        self.fc1 = nn.Linear(self.embed_dim, self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc2 = nn.Linear(self.embed_dim, self.embed_dim)
+        self.layer_norms = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(3)])
 
-        self.layer_norms_A = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(3)])
-        self.layer_norms_B = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(3)])
-
-    def forward(self, x_A, x_B, enc_A, enc_B):
-        """
-        Args:
-            x (Tensor): input to the layer of shape `(seq_len, batch, embed_dim)`
-            encoder_padding_mask (ByteTensor): binary ByteTensor of shape
-                `(batch, src_len)` where padding elements are indicated by ``1``.
-            x_k (Tensor): same as x
-            x_v (Tensor): same as x
-        Returns:
-            encoded output of shape `(batch, src_len, embed_dim)`
-        """
+    def forward(self, x, enc):
         ## Attention Part
         # Residual and Layer Norm
-        residual_A = x_A
-        residual_B = x_B
-        
+        residual = x 
         # Self Attention
         if self.src_mask: 
-            # print(x_A.shape) 
-            # print(x_B.shape)
-            assert x_A.shape[0] == x_B.shape[0]
-            mask = buffered_future_mask(x_A) 
-            # print(x_A.shape) # torch.Size([20, 256, 32])
-            # print(mask.shape) # torch.Size([20, 20])
-            # print(mask) 
+            mask = buffered_future_mask(x) 
         else: 
             mask = None
-        x_aaa, _ = self.self_attn(x_A, x_A, x_A, attn_mask=mask)
-        x_aab, _ = self.self_attn(x_A, x_A, x_B, attn_mask=mask)
-        x_aba, _ = self.self_attn(x_A, x_B, x_A, attn_mask=mask)
-        x_baa, _ = self.self_attn(x_B, x_A, x_A, attn_mask=mask)
-        x_abb, _ = self.self_attn(x_A, x_B, x_B, attn_mask=mask)
-        x_bab, _ = self.self_attn(x_B, x_A, x_B, attn_mask=mask)
-        x_bba, _ = self.self_attn(x_B, x_B, x_A, attn_mask=mask)
-        x_bbb, _ = self.self_attn(x_B, x_B, x_B, attn_mask=mask)
-
-        x_A = x_aaa - x_abb - x_bab - x_bba
-        x_B = -x_bbb + x_baa + x_aba + x_aab
-        
+        x, _ = self.self_attn(x, x, x)
         # Layer Norm, Dropout and Residual;
-        x_A = self.layer_norms_A[0](x_A)
-        x_B = self.layer_norms_B[0](x_B)
-        x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
-        x_A += residual_A 
-        x_B += residual_B
+        x = self.layer_norms[0](x)
+        x = F.dropout(x, p=self.res_dropout, training=self.training)
+        x += residual
         
-        residual_A = x_A
-        residual_B = x_B
+        residual = x
         
         # Attention between encoder and decoder 
-        x_acc, _ = self.attn(x_A, enc_A, enc_A) 
-        x_add, _ = self.attn(x_A, enc_B, enc_B) 
-        x_bcd, _ = self.attn(x_B, enc_A, enc_B) 
-        x_bdc, _ = self.attn(x_B, enc_B, enc_A) 
-        x_acd, _ = self.attn(x_A, enc_A, enc_B)
-        x_adc, _ = self.attn(x_A, enc_B, enc_A)
-        x_bcc, _ = self.attn(x_B, enc_A, enc_A)
-        x_bdd, _ = self.attn(x_B, enc_B, enc_B) 
-
-        x_A = x_acc - x_add - x_bcd - x_bdc 
-        x_B = x_acd + x_adc + x_bcc - x_bdd 
+        x, _ = self.attn(x, enc, enc) 
 
         # Layer Norm, Dropout and Residual;
-        x_A = self.layer_norms_A[1](x_A)
-        x_B = self.layer_norms_B[1](x_B)
-        x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
-        x_A += residual_A 
-        x_B += residual_B
+        x = self.layer_norms[1](x)
+        x = F.dropout(x, p=self.res_dropout, training=self.training)
+        x += residual
         
-        residual_A = x_A 
-        residual_B = x_B
+        residual = x
 
-        # # FC1
-        x_A = F.relu(self.fc1_A(x_A))
-        x_B = F.relu(self.fc1_B(x_B))
-        x_A = self.fc2_A(x_A)
-        x_B = self.fc2_B(x_B)
-        x_A = self.layer_norms_A[2](x_A)
-        x_B = self.layer_norms_B[2](x_B)
-        x_A = F.dropout(x_A, p=self.relu_dropout, training=self.training)
-        x_B = F.dropout(x_B, p=self.relu_dropout, training=self.training)
+        x = F.relu(self.fc1(x))
+        x = F.dropout(x, p=self.relu_dropout, training=self.training)
+        x = self.fc2(x)
+        x = self.layer_norms[2](x)
+        x = F.dropout(x, p=self.relu_dropout, training=self.training)
         
-        x_A += residual_A 
-        x_B += residual_B 
+        x += residual
 
-        return x_A, x_B
+        return x
 
 
 def fill_with_neg_inf(t):
