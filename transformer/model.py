@@ -116,22 +116,7 @@ class TransformerModel(nn.Module):
         return output
 
 class TransformerGenerationModel(nn.Module):
-    def __init__(self, ntokens, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
-        """
-        Construct a basic Transfomer model for multimodal tasks.
-        
-        :param ntokens: The number of unique tokens in text modality.
-        :param input_dims: The input dimensions of the various (in this case, 3) modalities.
-        :param num_heads: The number of heads to use in the multi-headed attention. 
-        :param attn_dropout: The dropout following self-attention sm((QK)^T/d)V.
-        :param relu_droput: The dropout for ReLU in residual block.
-        :param res_dropout: The dropout of each residual block.
-        :param layers: The number of transformer blocks.
-        :param attn_mask: A boolean indicating whether to use attention mask (for transformer decoder).
-        :param crossmodal: Use Crossmodal Transformer or Not
-
-        l = a, a = b 
-        """
+    def __init__(self, ntokens, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
         super(TransformerGenerationModel, self).__init__()
         self.conv = ComplexSequential(
             ComplexConv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
@@ -194,7 +179,7 @@ class TransformerGenerationModel(nn.Module):
         
         self.out_fc2 = nn.Linear(h_out, output_dim)
         
-        self.out_dropout = nn.Dropout(0.5)
+        self.out_dropout = nn.Dropout(out_dropout)
 
     def get_encoder_network(self):
         
