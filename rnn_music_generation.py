@@ -16,7 +16,7 @@ from models import eval_RNN_Model
 import argparse
 import time 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
+import random
 
 # parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
@@ -39,8 +39,15 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
+parser.add_argument('--seed', type=int, default=1111,
+                    help='random seed')
 
 args = parser.parse_args()
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
+np.random.seed(args.seed)
+random.seed(args.seed)
+torch.backends.cudnn.deterministic = True
 print(args)
 
 # input_size calculated based on src_time_step and trg_time_step 
@@ -114,15 +121,15 @@ for epoch in range(args.epoch):
         src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
         trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
         trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
-        outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5) # (ts, bs, input_size)
+        outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5, dataset="music") # (ts, bs, input_size)
         op.zero_grad()
         loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         op.step()
     
-    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device) 
-    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device) 
+    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "music") 
+    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device, "music") 
     
     # anneal learning 
     scheduler.step(loss_test)

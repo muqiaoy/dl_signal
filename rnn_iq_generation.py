@@ -1,7 +1,3 @@
-# rnn for iq dataset
-# Hyperparameters are listed in the beginning of main().
-# The loss is calculated in NLLLoss.
-
 from __future__ import print_function, division
 import os
 import torch
@@ -16,11 +12,12 @@ import torch.utils
 from sklearn.metrics import confusion_matrix
 import itertools
 from utils import get_meta, get_len, save_checkpoint, count_parameters
-from utils import SignalDataset_iq, SignalDataset_music
+from utils import SignalDataset_iq
 from models import Encoder_LSTM, Decoder_LSTM, Seq2Seq, eval_Seq2Seq
 from models import eval_RNN_Model 
 import argparse
 import time 
+import random
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
@@ -32,20 +29,29 @@ parser.add_argument('--data', dest='data', default='iq')
 parser.add_argument('--path', dest='path', type=str)
 parser.add_argument('--batch_size', dest='batch_size', type=int)
 parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200) 
+parser.add_argument('--output_dim', type=int, default=1000)
 parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200) 
 parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) 
 parser.add_argument('--dropout',dest='dropout',type=float, default=0.0) # applicable to: 'nn', 'gru'
-parser.add_argument('--learning_rate',dest='learning_rate',type=float, default=0.05) 
-parser.add_argument('--momentum', dest='momentum', type=float, default=0.0) 
-parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0) # applicable to: 'nn','gru'
-parser.add_argument('--epoch', type=int, default=200) # applicable to: 'nn','gru'
-parser.add_argument('--src_time_step', type=int, default=30)
-parser.add_argument('--trg_time_step', type=int, default=20)
+parser.add_argument('--lr',dest='lr',type=float, default=0.05) 
+parser.add_argument('--momentum', dest='momentum', type=float, default=0.9) 
+parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-7) # applicable to: 'nn','gru'
+parser.add_argument('--epoch', type=int, default=2000) # applicable to: 'nn','gru'
+parser.add_argument('--src_time_step', type=int, default=12)
+parser.add_argument('--trg_time_step', type=int, default=8)
 # parser.add_argument('--input_size', type=int, default=160) # applicable to: 'nn','gru'
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
+parser.add_argument('--clip', type=float, default=0.35, help='gradient clip value (default: 0.35)')
+parser.add_argument('--seed', type=int, default=1111, help='random seed')
+
 
 args = parser.parse_args()
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
+np.random.seed(args.seed)
+random.seed(args.seed)
+torch.backends.cudnn.deterministic = True
 print(args)
 
 # input_size calculated based on src_time_step and trg_time_step 
@@ -67,7 +73,7 @@ params_model = {
     'dropout'    : float(args.dropout)
 }
 params_op = {
-    'lr'          : float(args.learning_rate),
+    'lr'          : float(args.lr),
     'momentum'    : float(args.momentum),
     'weight_decay': float(args.weight_decay)
 }
@@ -80,18 +86,13 @@ arch = args.arch
 
 total_time_step = src_time_step + trg_time_step 
 if args.data == 'music': 
-    assert(total_time_step == 256)
+    assert(total_time_step == 128)
 
 print("Start loading data") 
 start = time.time()
 # load data
-if args.data == 'iq': 
-    training_set = SignalDataset_iq(path, time_step=total_time_step, train=True)
-    test_set = SignalDataset_iq(path, time_step=total_time_step, train=False)
-elif args.data == 'music': 
-    training_set = SignalDataset_music(path, time_step=total_time_step, train=True)
-    test_set = SignalDataset_music(path, time_step=total_time_step, train=False)
-
+training_set = SignalDataset_iq(path, time_step=total_time_step, train=True)
+test_set = SignalDataset_iq(path, time_step=total_time_step, train=False)
 train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
@@ -106,52 +107,18 @@ num_classes = training_set.num_classes
 
 # init model
 encoder = Encoder_LSTM(**params_model)
-decoder = Decoder_LSTM(**params_model, fc_hidden_dim=fc_hidden_size)
+decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim, fc_hidden_dim=fc_hidden_size)
 model = Seq2Seq(encoder, decoder, device).to(device) 
-
-# init weights 
-# def init_weights(m):
-#     for name, param in m.named_parameters():
-#         nn.init.uniform_(param.data, -0.08, 0.08)
-        
-# model.apply(init_weights)
-
 print("Model size: {0}".format(count_parameters(model)))
 
-
-# criterion = nn.NLLLoss()
-criterion= nn.MSELoss() 
-# op = torch.optim.SGD(model.parameters(), **params_op)
+criterion= nn.CrossEntropyLoss() 
 op = torch.optim.Adam(model.parameters())
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     op, patience=2, factor=0.5, verbose=True)
-# CLIP = 1
-
-
-
-# # resume from checkpoint 
-# if args.resume:
-#     if os.path.isfile(args.resume):
-#         print("=> loading checkpoint '{}'".format(args.resume))
-#         checkpoint = torch.load(args.resume)
-#         args.start_epoch = checkpoint['epoch']
-#         best_acc1 = checkpoint['best_acc1']
-#         model.load_state_dict(checkpoint['state_dict'])
-#         optimizer.load_state_dict(checkpoint['optimizer'])
-#         print("=> loaded checkpoint '{}' (epoch {})"
-#               .format(args.resume, checkpoint['epoch']))
-#     else:
-#         print("=> no checkpoint found at '{}'".format(args.resume))
 
 # training 
 best_acc_train = -1
 best_acc_test = -1
-
-
-_ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device) 
-loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device) 
-
-
 for epoch in range(args.epoch):
     start = time.time()
 
@@ -161,74 +128,22 @@ for epoch in range(args.epoch):
     for data_batched, label_batched in train_loader:
         # data_batched: bs, ts, feature_dim 
         cur_batch_size = len(data_batched) 
-
-        # print("data_batched.shape")
-        # print(data_batched.shape) 
-        # print("label_batched.shape")
-        # print(label_batched.shape)
-
-        # src = data_batched[:, 0 : src_time_step * input_size] 
-        # trg = data_batched[:, src_time_step * input_size : ]
-        # src = src.reshape(cur_batch_size, src_time_step, input_size) 
-        # trg = trg.reshape(cur_batch_size, trg_time_step, input_size)
-
-        src = data_batched[:, 0 : src_time_step, :] 
-        trg = data_batched[:, src_time_step : , :] 
-        src = src.transpose(1, 0) # (ts, bs, input_size)
-        trg = trg.transpose(1, 0) # (ts, bs, input_size)
-        src = src.float().to(device=device)
-        trg = trg.float().to(device=device)
-
-        # data_batched = data_batched.reshape(cur_batch_size, time_step, input_size) # (batch_size, feature_dim) -> (batch_size, time_step, input_size) 
-
-        # data = data_batched.float().to(device=device) 
-        # # print(label_batched.shape)
-        # label = np.argmax(label_batched, axis=1).long().view(-1).to(device=device) # (batch_size)
-
-
-        outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5) # (ts, bs, input_size)
-
-        trg = trg.transpose(1, 0).reshape(cur_batch_size, -1)
-        outputs = outputs.transpose(1, 0).reshape(cur_batch_size, -1)
-
+        src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
+        trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
+        trg_label = label_batched.cuda()
+        outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5, dataset="iq") # (ts, bs, input_size)
         op.zero_grad()
-        loss = criterion(outputs, trg)
-        # print(loss.item())
+        loss = criterion(outputs, trg_label)
         loss.backward()
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         op.step()
     
-    # train_compressed_signal, _, acc_train = eval_RNN_Model(train_loader, time_step, input_size,
-    #                                      model, num_classes, criterion, "train", path)
-    # test_compressed_signal, loss_test, acc_test = eval_RNN_Model(test_loader, time_step, input_size,
-    #                                    model, num_classes, criterion, "test", path)
-    
-    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device) 
-    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device) 
+    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "iq") 
+    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device, "iq") 
     
     # anneal learning 
     scheduler.step(loss_test)
     
-    # if acc_train > best_acc_train:
-    #     save_path = os.path.join(path, 'compressed_train_GRU')
-    #     np.save(save_path, train_compressed_signal)
-
-    # if acc_test > best_acc_test:
-    #     save_path = os.path.join(path, 'compressed_test_GRU')
-    #     np.save(save_path, test_compressed_signal)
-    
-    
-    # is_best = acc_test > best_acc_test
-    # best_acc_train = max(acc_train, best_acc_train) 
-    # best_acc_test = max(acc_test, best_acc_test)
-    # save_checkpoint({
-    #                 'epoch': epoch + 1,
-    #                 'arch': arch, 
-    #                 'state_dict': model.state_dict(),
-    #                 'best_acc1': best_acc_test,
-    #                 'optimizer' : op.state_dict(),
-    #                 }, is_best)
-
     end = time.time()
     print("time: %d" % (end - start))
 
