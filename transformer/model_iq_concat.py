@@ -128,6 +128,6 @@ class TransformerGenerationModel(nn.Module):
         y = torch.cat([sos, y], dim=0)    # add <sos> to front 
         y = self.proj_dec(y)
         out = self.trans_decoder(input=y, enc=h_x)
-        out_concat = torch.cat([out[-1]], dim=-1)
+        out_concat = torch.cat([out], dim=-1)
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
         return output # (TS, BS, feature_dim)  

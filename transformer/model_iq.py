@@ -155,7 +155,7 @@ class TransformerGenerationModel(nn.Module):
         y_b = torch.cat([sos_b, y_b], dim=0)    # add <sos> to front 
         y_a, y_b = self.proj_dec(y_a, y_b)
         out_as, out_bs = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
-        out_concat = torch.cat([out_as[-1], out_bs[-1]], dim=-1)
+        out_concat = torch.cat([out_as, out_bs], dim=-1)
         
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
 

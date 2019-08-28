@@ -111,7 +111,7 @@ decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim, fc_hidden_dim
 model = Seq2Seq(encoder, decoder, device).to(device) 
 print("Model size: {0}".format(count_parameters(model)))
 
-criterion= nn.CrossEntropyLoss() 
+criterion= nn.MSELoss() 
 op = torch.optim.Adam(model.parameters())
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     op, patience=2, factor=0.5, verbose=True)
@@ -130,10 +130,9 @@ for epoch in range(args.epoch):
         cur_batch_size = len(data_batched) 
         src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
         trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-        trg_label = label_batched.cuda()
         outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5, dataset="iq") # (ts, bs, input_size)
         op.zero_grad()
-        loss = criterion(outputs, trg_label)
+        loss = criterion(outputs, trg)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         op.step()

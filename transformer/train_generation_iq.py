@@ -46,7 +46,7 @@ def train_transformer():
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
     # criterion = nn.CrossEntropyLoss()
-    criterion= nn.CrossEntropyLoss() 
+    criterion= nn.MSELoss() 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
@@ -83,7 +83,7 @@ def train_model(settings):
             # clear gradients
             model.zero_grad() 
             outputs = model(x=src, y=trg) 
-            loss = criterion(outputs, trg_label)
+            loss = criterion(outputs, trg)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
@@ -110,7 +110,7 @@ def train_model(settings):
                 trg_label = label_batched.cuda()
                
                 outputs = model(x=src, y=trg)
-                loss = criterion(outputs, trg_label)
+                loss = criterion(outputs, trg)
                 epoch_loss += loss
         avg_loss = epoch_loss / float(len(test_loader))
         return avg_loss

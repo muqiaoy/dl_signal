@@ -585,13 +585,8 @@ class Seq2Seq(nn.Module):
             teacher_force = random.random() < teacher_forcing_ratio
             # top1 = output.max(1)[1]
             # input = (trg[t] if teacher_force else top1)
-            input = (trg[t] if teacher_force else output)              # REQUIRES: ouput_dim = input_dim 
-        if dataset == "music":
-            outputs = self.out_fc(outputs) 
-        elif dataset == "iq":
-            outputs = self.out_fc(outputs[-1])
-        else:
-            assert False
+            input = (trg[t] if teacher_force else output)
+        outputs = self.out_fc(outputs)
         return outputs # (seq_len, bs, output_dim)
 
 def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset):
@@ -610,8 +605,7 @@ def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, c
                 trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
             elif dataset == "iq":
-                trg_label = label_batched.cuda()
-                loss = criterion(outputs, trg_label)
+                loss = criterion(outputs, trg)
             epoch_loss += loss 
 
         avg_loss = epoch_loss / float(len(data_loader))
