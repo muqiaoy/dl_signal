@@ -173,8 +173,6 @@ parser.add_argument('--nlevels', type=int, default=6,
 parser.add_argument('--nhorizons', type=int, default=1)
 # parser.add_argument('--modal_lengths', nargs='+', type=int, default=[160, 160],
 #                     help='lengths of each modality (default: [160, 160])')
-parser.add_argument('--output_dim', type=int, default=1000,
-                    help='dimension of output (default: 1000)')
 parser.add_argument('--num_epochs', type=int, default=200,
                     help='number of epochs (default: 200)')
 parser.add_argument('--num_heads', type=int, default=8,
@@ -222,6 +220,8 @@ torch.set_default_tensor_type('torch.FloatTensor')
 #         use_cuda = True
 
 total_time_step = args.src_time_step + args.trg_time_step
+assert 3200 % total_time_step == 0, "3200 must be divisible by total_time_step in iq dataset"
+args.output_dim = 3200//total_time_step
 start = time.time()
 print("Start loading the data....")
     
