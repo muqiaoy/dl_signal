@@ -5,9 +5,9 @@ sys.path.insert(0,parentdir)
 
 import torch
 from torch import nn
-from utils import SignalDataset_iq, SignalDataset_music_Low_Mem, count_parameters
+from utils import SignalDataset_iq, count_parameters
 import argparse
-from model_iq_concat import *
+from model_iq import *
 import torch.optim as optim
 import numpy as np
 import time
@@ -17,7 +17,6 @@ import os
 import time
 import random
 
-# Should change into only two modalities, instead of three
 def train_transformer():
     if args.data == 'iq': 
         input_size = int(3200 / (args.src_time_step + args.trg_time_step))
@@ -25,10 +24,7 @@ def train_transformer():
         input_size = 4096 
     input_dim = int(input_size / 2) 
 
-    model = TransformerGenerationModel(ntokens=10000,        # TODO: wait for Paul's data
-                             # time_step=args.time_step,
-                             input_dims=[input_dim, input_dim],
-                             # proj_dims=args.modal_lengths,
+    model = TransformerGenerationModel(input_dims=[input_dim, input_dim],
                              hidden_size=args.hidden_size,
                              embed_dim=args.embed_dim,
                              output_dim=args.output_dim,
@@ -38,9 +34,7 @@ def train_transformer():
                              res_dropout=args.res_dropout,
                              out_dropout=args.out_dropout,
                              layers=args.nlevels,
-                             horizons=args.nhorizons,
-                             attn_mask=args.attn_mask,
-                             crossmodal=args.crossmodal)
+                             attn_mask=args.attn_mask)
     if use_cuda:
         model = model.cuda()
 
@@ -73,14 +67,14 @@ def train_model(settings):
 
     def train(model, optimizer, criterion):
         epoch_loss = 0
-        
         model.train()
 
         for i_batch, (data_batched, label_batched) in enumerate(train_loader):
             cur_batch_size = len(data_batched) 
             src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
             trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-            trg_label = label_batched.cuda()
+
+            # clear gradients
             model.zero_grad() 
             outputs = model(x=src, y=trg) 
             loss = criterion(outputs, trg)
@@ -94,15 +88,17 @@ def train_model(settings):
 
         return avg_loss
 
+
     def evaluate(model, criterion):
         model.eval()
         epoch_loss = 0
+
         with torch.no_grad():
             for i_batch, (data_batched, label_batched) in enumerate(test_loader):
                 cur_batch_size = len(data_batched)
                 src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
                 trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-                trg_label = label_batched.cuda()
+               
                 outputs = model(x=src, y=trg)
                 loss = criterion(outputs, trg)
                 epoch_loss += loss
@@ -127,19 +123,6 @@ def train_model(settings):
         print("time: %d" % (end - start))
 
 
-def weighted_accuracy(test_preds_emo, test_truth_emo):
-    true_label = (test_truth_emo > 0)
-    predicted_label = (test_preds_emo > 0)
-    tp = float(np.sum((true_label==1) & (predicted_label==1)))
-    tn = float(np.sum((true_label==0) & (predicted_label==0)))
-    p = float(np.sum(true_label==1))
-    n = float(np.sum(true_label==0))
-    
-    
-    return (tp * (n/p) +tn) / (2*n)
-
-
-
 
 parser = argparse.ArgumentParser(description='Signal Data Analysis')
 parser.add_argument('-f', default='', type=str)
@@ -150,8 +133,6 @@ parser.add_argument('--embed_dim', type=int, default=128,
 parser.add_argument('--data', type=str, default='music')
 parser.add_argument('--path', type=str, default='data',
                     help='path for storing the dataset')
-# parser.add_argument('--time_step', type=int, default=20,
-#                     help='number of time step for each sequence')
 parser.add_argument('--src_time_step', type=int, default=30)
 parser.add_argument('--trg_time_step', type=int, default=20)
 parser.add_argument('--attn_dropout', type=float, default=0.0,
@@ -164,7 +145,8 @@ parser.add_argument('--out_dropout', type=float, default=0.5,
                     help='output dropout')
 parser.add_argument('--nlevels', type=int, default=6,
                     help='number of layers in the network (if applicable) (default: 6)')
-parser.add_argument('--nhorizons', type=int, default=1)
+# parser.add_argument('--modal_lengths', nargs='+', type=int, default=[160, 160],
+#                     help='lengths of each modality (default: [160, 160])')
 parser.add_argument('--num_epochs', type=int, default=200,
                     help='number of epochs (default: 200)')
 parser.add_argument('--num_heads', type=int, default=8,
@@ -175,8 +157,6 @@ parser.add_argument('--batch_size', type=int, default=64, metavar='N',
                     help='batch size (default: 64)')
 parser.add_argument('--attn_mask', action='store_true',
                     help='use attention mask for Transformer (default: False)')
-parser.add_argument('--crossmodal', action='store_false',
-                    help='determine whether use the crossmodal fusion or not (default: True)')
 parser.add_argument('--lr', type=float, default=1e-3,
                     help='initial learning rate (default: 1e-3)')
 parser.add_argument('--clip', type=float, default=0.35,
@@ -212,11 +192,9 @@ print("Start loading the data....")
 if args.data == 'iq': 
     training_set = SignalDataset_iq(args.path, time_step=total_time_step, train=True)
     test_set = SignalDataset_iq(args.path, time_step=total_time_step, train=False)
-else: 
-    assert(total_time_step == 128 or total_time_step == 64)
-    training_set = SignalDataset_music_Low_Mem(args.path, time_step=total_time_step, train=True)
-    test_set = SignalDataset_music_Low_Mem(args.path, time_step=total_time_step, train=False)
-
+else:
+    print("This file is for iq dataset only.")
+    assert False
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
 

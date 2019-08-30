@@ -6,7 +6,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 from utils import SignalDataset_iq
 import argparse
-from model_iq import *
+from model_iq_concat import *
 import torch.optim as optim
 import numpy as np
 import time
@@ -15,16 +15,10 @@ from torch.utils.data import DataLoader
 import os
 import time
 import random
-
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score, f1_score
 from sklearn.metrics import average_precision_score
 
 def train_transformer():
-    model = TransformerModel(ntokens=10000,
-                             time_step=args.time_step,
+    model = TransformerModel(time_step=args.time_step,
                              input_dims=args.modal_lengths,
                              hidden_size=args.hidden_size,
                              embed_dim=args.embed_dim,
@@ -35,8 +29,7 @@ def train_transformer():
                              res_dropout=args.res_dropout,
                              out_dropout=args.out_dropout,
                              layers=args.nlevels,
-                             attn_mask=args.attn_mask,
-                             crossmodal=args.crossmodal)
+                             attn_mask=args.attn_mask)
     if use_cuda:
         model = model.cuda()
 
@@ -93,8 +86,6 @@ def train_model(settings):
         with torch.no_grad():
             for i_batch, (batch_X, batch_y) in enumerate(test_loader):
                 batch_X = batch_X.transpose(0, 1)
-                # print(batch_X.shape) : (batch_size, time=20, feature_dim=160)
-                # print(batch_y.shape):  (batch_size,)
                 batch_X, batch_y = batch_X.float().to(device=device), batch_y.to(device=device)
                 preds = model(batch_X)
                 loss = criterion(preds, batch_y)
@@ -130,8 +121,6 @@ parser.add_argument('--batch_size', type=int, default=1, metavar='N',
                     help='batch size (default: 1)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
-parser.add_argument('--crossmodal', action='store_false',
-                    help='determine whether use the crossmodal fusion or not (default: True)')
 parser.add_argument('--data', type=str, default='music')
 parser.add_argument('--embed_dim', type=int, default=128,
                     help='dimension of real and imag embeddimg before transformer (default: 100)')

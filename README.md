@@ -18,11 +18,27 @@ Dimension of data:<br />
 | train         | (5589, 32, 1600, 2) | (outer_batch, inner_batch, time_step, feature_dim) |
 | test          | (5589, 32, 1000)    | (outer_batch, inner_batch, class(one hot))         |
 
-<!---
+-
 ## Instruction
-An example command line to start the training and testing.<br />
-`python gru.py --path ../dataset/TA1 --batch_size 100 --hidden_size 100 --num_layers 2 --dropout 0.1 --learning_rate 0.05 --momentum 0.95 --weight_decay 0 --input_size 160 --time_step 20 --feature_dim 160`<br />
-To configure parameters, directly configure it through command line.<br />
+Preprocess the MusicNet dataset as stated in the paper: <br />
+`python parse_file.py`<br />
+Sample command line for automatic music transcription: <br />
+`python -u transformer/train.py --data music --path path --time_step 64 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 2048 2048 --embed_dim 320 --output_dim 128 --num_heads 8 --seed 1111 --lr 0.001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 32`<br />
+Concatenated transformer or automatic music transcription: <br />
+`python -u transformer/train_concat.py --data music --path path --time_step 64 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 2048 2048 --embed_dim 320 --output_dim 128 --num_heads 8 --seed 1111 --lr 0.001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 32`<br />
+For MusicNet generation tasks: <br />
+`python -u transformer/train_gen.py --path path --lr 0.001 --hidden_size 2048 --output_dim 128 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
+Concatenated transformer: <br />
+`python -u transformer/train_gen_concat.py --path path --lr 0.001 --hidden_size 2048 --output_dim 128 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
+For IQ generation tasks: <br />
+`python -u transformer/train_gen_iq.py --path path --data iq --lr 0.001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 200 --out_dropout 0.5`<br />
+Concatenated transformer: <br />
+`python -u transformer/train_gen_iq_concat.py --path path --data iq --lr 0.001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 200 --out_dropout 0.5`<br />
+LSTM for MusicNet generation: <br />
+`python -u lstm_music_gen.py --path path --batch_size 8 --hidden_size 800 --num_layers 3 --fc_hidden_size 2048 --output_dim 128 --lr 0.001 --dropout 0.5  --src_time_step 40 --trg_time_step 24`<br />
+LSTM for IQ generation: <br />
+`python3.6 -u lstm_iq_gen.py --path path --batch_size 8 --hidden_size 800 --num_layers 3 --fc_hidden_size 800 --src_time_step 40 --trg_time_step 24 --output_dim 50   `<br />
+<!-- To configure parameters, directly configure it through command line.<br />
 ## Model Selection
 If we want to train the dataset using fnn, set <br />
 `python fnn.py --path ......(as above)`.<br />
@@ -40,6 +56,6 @@ You could tune each parameter by change the value of specific parameter. For exa
 - `fnn.py`: train and test setup of fnn model
 - `gru.py`: train and test setup of gru model
 - `rnn.py`: train and test setup of rnn model
-- `rnn_iq.py`: train and test setup of rnn model for the iq dataset
--->
+- `rnn_iq.py`: train and test setup of rnn model for the iq dataset -->
+
 

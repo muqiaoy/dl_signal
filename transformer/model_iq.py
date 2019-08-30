@@ -10,25 +10,26 @@ import numpy as np
 from modules.transformer import TransformerEncoder, TransformerDecoder
 from models import *
 from utils import count_parameters
-from conv import Conv1d
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, ntokens, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, attn_mask=False, crossmodal=False):
+    def __init__(self, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, attn_mask=False,):
         """
         Construct a basic Transfomer model for multimodal tasks.
         
-        :param ntokens: The number of unique tokens in text modality.
-        :param input_dims: The input dimensions of the various (in this case, 3) modalities.
+        :param input_dims: The input dimensions of the various modalities.
+        :param hidden_size: The hidden dimensions of the fc layer.
+        :param embed_dim: The dimensions of the embedding layer.
+        :param output_dim: The dimensions of the output (128 in MuiscNet).
         :param num_heads: The number of heads to use in the multi-headed attention. 
         :param attn_dropout: The dropout following self-attention sm((QK)^T/d)V.
         :param relu_droput: The dropout for ReLU in residual block.
         :param res_dropout: The dropout of each residual block.
+        :param out_dropout: The dropout of output layer.
         :param layers: The number of transformer blocks.
         :param attn_mask: A boolean indicating whether to use attention mask (for transformer decoder).
-        :param crossmodal: Use Crossmodal Transformer or Not
         """
         super(TransformerModel, self).__init__()
         [self.orig_d_a, self.orig_d_b] = input_dims
@@ -44,7 +45,6 @@ class TransformerModel(nn.Module):
         self.res_dropout = res_dropout
         self.attn_mask = attn_mask
         self.embed_dim = embed_dim
-        self.crossmodal = crossmodal
         
         # Transformer networks
         self.trans = self.get_network()
@@ -62,7 +62,7 @@ class TransformerModel(nn.Module):
     def get_network(self):
         
         return TransformerEncoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
-            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
+            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask)
             
     def forward(self, x):
         """
@@ -82,12 +82,11 @@ class TransformerModel(nn.Module):
         return output
 
 class TransformerGenerationModel(nn.Module):
-    def __init__(self, ntokens, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, horizons, attn_mask=False, src_mask=False, tgt_mask=False, crossmodal=False):
+    def __init__(self, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, attn_mask=False, src_mask=False, tgt_mask=False):
         super(TransformerGenerationModel, self).__init__()
         [self.orig_d_a, self.orig_d_b] = input_dims
         assert self.orig_d_a == self.orig_d_b
         self.d_a, self.d_b = 512, 512
-        self.ntokens = ntokens
         final_out = embed_dim * 2
         h_out = hidden_size
         self.num_heads = num_heads
@@ -97,7 +96,6 @@ class TransformerGenerationModel(nn.Module):
         self.res_dropout = res_dropout
         self.attn_mask = attn_mask
         self.embed_dim = embed_dim
-        self.crossmodal = crossmodal
 
         # Transformer networks
         self.d_a, self.d_b = 512, 512
@@ -126,11 +124,11 @@ class TransformerGenerationModel(nn.Module):
     def get_encoder_network(self):
         
         return TransformerEncoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, attn_dropout=self.attn_dropout,
-            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask, crossmodal=self.crossmodal)
+            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask)
 
     def get_decoder_network(self): 
         return TransformerDecoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, src_attn_dropout=self.attn_dropout, 
-            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, tgt_attn_dropout=self.attn_dropout, crossmodal=self.crossmodal)
+            relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, tgt_attn_dropout=self.attn_dropout)
             
     def forward(self, x, y):
         """
@@ -160,5 +158,4 @@ class TransformerGenerationModel(nn.Module):
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
 
 
-        return output # (TS, BS, feature_dim)  
-        # return output, h_ls_as   # (list dim = horizons, tuple dim = 2, Tensor(10 (TS), 256 (BS), 160 (a_dim/b_dim)))
+        return output

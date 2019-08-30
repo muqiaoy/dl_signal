@@ -4,9 +4,9 @@ import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
-from utils import SignalDataset_iq
+from utils import SignalDataset_music
 import argparse
-from model_iq_concat import *
+from model_concat import *
 import torch.optim as optim
 import numpy as np
 import time
@@ -15,16 +15,10 @@ from torch.utils.data import DataLoader
 import os
 import time
 import random
-
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score, f1_score
 from sklearn.metrics import average_precision_score
 
 def train_transformer():
-    model = TransformerModel(ntokens=10000,
-                             time_step=args.time_step,
+    model = TransformerModel(time_step=args.time_step,
                              input_dims=args.modal_lengths,
                              hidden_size=args.hidden_size,
                              embed_dim=args.embed_dim,
@@ -35,8 +29,7 @@ def train_transformer():
                              res_dropout=args.res_dropout,
                              out_dropout=args.out_dropout,
                              layers=args.nlevels,
-                             attn_mask=args.attn_mask,
-                             crossmodal=args.crossmodal)
+                             attn_mask=args.attn_mask)
     if use_cuda:
         model = model.cuda()
 
@@ -45,7 +38,7 @@ def train_transformer():
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
     # For Rprop and SparseAdam and LBFGS
     #optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
     settings = {'model': model,
                 'optimizer': optimizer,
@@ -59,51 +52,61 @@ def train_model(settings):
     optimizer = settings['optimizer']
     criterion = settings['criterion']
     scheduler = settings['scheduler']
+    #model = nn.DataParallel(model)
     model.to(device)
     def train(model, optimizer, criterion):
         epoch_loss = 0.0
         batch_size = args.batch_size
         num_batches = len(training_set) // batch_size
         total_batch_size = 0
-        total_correct = 0
         start_time = time.time()
+        shape = (args.time_step, training_set.len, args.output_dim)
+        true_vals = torch.zeros(shape)
+        pred_vals = torch.zeros(shape)
         model.train()
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
             model.zero_grad()
             batch_X = batch_X.transpose(0, 1)
-            # print(batch_X.shape) : (batch_size, time=20, feature_dim=160)
-            # print(batch_y.shape):  (batch_size,)
-            batch_X, batch_y = batch_X.float().to(device=device), batch_y.to(device=device)
+            batch_y = batch_y.transpose(0, 1) 
+            
+            batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds = model(batch_X)
+            true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
+            pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
             loss = criterion(preds, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
             total_batch_size += batch_size
-            total_correct += (batch_y == preds.argmax(-1)).sum()
             epoch_loss += loss.item() * batch_size
-        aps = float(total_correct) / float(total_batch_size) 
+        aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
+            # aps = np.where(np.isnan(aps), 1, aps) 
+        # aps = 0
+        print(sys.argv) 
         return epoch_loss / len(training_set), aps
 
     def evaluate(model, criterion):
         epoch_loss = 0.0
         batch_size = args.batch_size
-        num_batches = len(training_set) // batch_size
+        loader = test_loader
         total_batch_size = 0
-        total_correct = 0
+        shape = (args.time_step, test_set.len, args.output_dim)
+        true_vals = torch.zeros(shape)
+        pred_vals = torch.zeros(shape)
         model.eval()
         with torch.no_grad():
-            for i_batch, (batch_X, batch_y) in enumerate(test_loader):
+            for i_batch, (batch_X, batch_y) in enumerate(loader):
                 batch_X = batch_X.transpose(0, 1)
-                # print(batch_X.shape) : (batch_size, time=20, feature_dim=160)
-                # print(batch_y.shape):  (batch_size,)
-                batch_X, batch_y = batch_X.float().to(device=device), batch_y.to(device=device)
+                batch_y = batch_y.transpose(0, 1)
+                batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
                 preds = model(batch_X)
+                true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
+                pred_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = preds.detach().cpu()
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
-                total_correct += (batch_y == preds.argmax(-1)).sum()
                 epoch_loss += loss.item() * batch_size
-            aps = float(total_correct) / float(total_batch_size)
+            aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
+            # aps = np.where(np.isnan(aps), 1, aps)
         return epoch_loss / len(test_set), aps
 
 
@@ -132,8 +135,6 @@ parser.add_argument('--batch_size', type=int, default=1, metavar='N',
                     help='batch size (default: 1)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
-parser.add_argument('--crossmodal', action='store_false',
-                    help='determine whether use the crossmodal fusion or not (default: True)')
 parser.add_argument('--data', type=str, default='music')
 parser.add_argument('--embed_dim', type=int, default=128,
                     help='dimension of real and imag embeddimg before transformer (default: 100)')
@@ -167,9 +168,6 @@ parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
 parser.add_argument('--time_step', type=int, default=2048,
                     help='number of time step for each sequence(default: 2048)')
-
-# For distributed
-#parser.add_argument("--local_rank", type=int)
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
@@ -194,7 +192,8 @@ torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
 start_time = time.time() 
 if args.data == 'music':
-    print("This file is for iq dataset only; use train_music.py for training music net.")
+    training_set = SignalDataset_music(args.path, args.time_step, train=True)
+    test_set = SignalDataset_music(args.path, args.time_step, train=False)
 elif args.data == 'iq':
     training_set = SignalDataset_iq(args.path, args.time_step, train=True)
     test_set = SignalDataset_iq(args.path, args.time_step, train=False)

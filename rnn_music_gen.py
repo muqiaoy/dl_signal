@@ -10,7 +10,7 @@ import torch.utils
 from sklearn.metrics import confusion_matrix
 import itertools
 from utils import get_meta, get_len, save_checkpoint, count_parameters
-from utils import SignalDataset_music_Low_Mem
+from utils import SignalDataset_music
 from models import Encoder_LSTM, Decoder_LSTM, Seq2Seq, eval_Seq2Seq
 from models import eval_RNN_Model 
 import argparse
@@ -27,14 +27,13 @@ parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200)
 parser.add_argument('--output_dim', type=int, default=128)
 parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200) 
 parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) 
-parser.add_argument('--dropout',dest='dropout',type=float, default=0.0) # applicable to: 'nn', 'gru'
+parser.add_argument('--dropout',dest='dropout',type=float, default=0.0)
 parser.add_argument('--lr',dest='lr',type=float, default=0.05) 
 parser.add_argument('--momentum', dest='momentum', type=float, default=0.9) 
-parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-7) # applicable to: 'nn','gru'
-parser.add_argument('--epoch', type=int, default=2000) # applicable to: 'nn','gru'
+parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-7)
+parser.add_argument('--epoch', type=int, default=2000)
 parser.add_argument('--src_time_step', type=int, default=40)
 parser.add_argument('--trg_time_step', type=int, default=24)
-# parser.add_argument('--input_size', type=int, default=160) # applicable to: 'nn','gru'
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('--clip', type=float, default=0.35,
@@ -81,17 +80,17 @@ assert(total_time_step == 64 or total_time_step == 128)
 print("Start loading data") 
 start = time.time()
 # load data
-training_set = SignalDataset_music_Low_Mem(path, time_step=total_time_step, train=True)
+training_set = SignalDataset_music(path, time_step=total_time_step, train=True)
 train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 
-test_set = SignalDataset_music_Low_Mem(path, time_step=total_time_step, train=False)
+test_set = SignalDataset_music(path, time_step=total_time_step, train=False)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
 end = time.time()
 print("Loading data time: %d" % (end - start))
 
-print(len(train_loader)) 
-print(len(test_loader))
+print("train len:", len(train_loader)) 
+print("test len:", len(test_loader))
 
 # get num_classes from training data set 
 num_classes = args.output_dim
@@ -118,7 +117,6 @@ for epoch in range(args.epoch):
         # data_batched: bs, ts, feature_dim 
         cur_batch_size = len(data_batched) 
         src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
-        src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
         trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
         trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
         outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5, dataset="music") # (ts, bs, input_size)
