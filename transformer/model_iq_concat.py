@@ -32,37 +32,9 @@ class TransformerModel(nn.Module):
         :param attn_mask: A boolean indicating whether to use attention mask (for transformer decoder).
         """
         super(TransformerModel, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=1),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-            )
         [self.orig_d_a, self.orig_d_b] = input_dims
         assert self.orig_d_a == self.orig_d_b
-        channels = ((((((((((self.orig_d_a + self.orig_d_b -6)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 
-            -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1
-        self.d_x = 128*channels
+        self.d_x = 1024
         final_out = embed_dim
         h_out = hidden_size
         self.num_heads = num_heads
@@ -77,6 +49,7 @@ class TransformerModel(nn.Module):
         self.trans = self.get_network()
         print("Encoder Model size: {0}".format(count_parameters(self.trans)))
         # Projection layers
+        self.fc = nn.Linear(self.orig_d_a + self.orig_d_b, self.d_x)
         self.proj = nn.Linear(self.d_x, self.embed_dim)
         
         self.out_fc1 = nn.Linear(final_out, h_out)
@@ -91,16 +64,13 @@ class TransformerModel(nn.Module):
             
     def forward(self, x):
         """
-        x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).
+        x should have dimension [batch_size, seq_len, n_features] (i.e., N, L, C).
         """
         time_step, batch_size, n_features = x.shape
-        x = x.view(-1, 1, n_features)
-        x = self.conv(x)
-        x = x.reshape(time_step, batch_size, self.d_x)
+        x = self.fc(x)
         x = self.proj(x)
-        # Pass the input through individual transformers
         h_x = self.trans(x)
-        h_concat = torch.cat([h_x], dim=-1)
+        h_concat = torch.cat([h_x[-1]], dim=-1)
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(h_concat))))
         # No sigmoid because we use BCEwithlogitis which contains sigmoid layer and more stable
         return output
@@ -110,34 +80,7 @@ class TransformerGenerationModel(nn.Module):
         super(TransformerGenerationModel, self).__init__()
         [orig_d_a, orig_d_b] = input_dims
         self.orig_d_x = orig_d_a + orig_d_b
-        self.conv = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=1),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-
-            nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, stride=1),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(2, stride=2),
-            )
-        channels = ((((((((((self.orig_d_x -6)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1 -3)//1+1 -2)//2+1
-        self.d_x = 128*channels
+        self.d_x = 1024
         final_out = embed_dim
         h_out = hidden_size
         self.num_heads = num_heads
@@ -156,6 +99,7 @@ class TransformerGenerationModel(nn.Module):
         print("Decoder Model size: {0}".format(count_parameters(self.trans_decoder)))
         
         # Projection layers
+        self.fc = nn.Linear(self.orig_d_x, self.d_x)
         self.proj_enc = nn.Linear(self.d_x, self.embed_dim)
         self.proj_dec = nn.Linear(self.orig_d_x, self.embed_dim)
         
@@ -180,11 +124,8 @@ class TransformerGenerationModel(nn.Module):
         """
 
         time_step, batch_size, n_features = x.shape
-        
         # encoder
-        x = x.view(-1, 1, n_features)
-        x = self.conv(x)
-        x = x.reshape(time_step, batch_size, self.d_x)
+        x = self.fc(x)
         x = self.proj_enc(x)
         h_x = self.trans_encoder(x)
         
@@ -197,4 +138,4 @@ class TransformerGenerationModel(nn.Module):
         out = self.trans_decoder(input=y, enc=h_x)
         out_concat = torch.cat([out], dim=-1)
         output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
-        return output 
+        return output

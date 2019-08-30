@@ -6,7 +6,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 from utils import SignalDataset_music
 import argparse
-from model import *
+from model_concat import *
 import torch.optim as optim
 import numpy as np
 import time
@@ -67,7 +67,8 @@ def train_model(settings):
         for i_batch, (batch_X, batch_y) in enumerate(train_loader):
             model.zero_grad()
             batch_X = batch_X.transpose(0, 1)
-            batch_y = batch_y.transpose(0, 1)
+            batch_y = batch_y.transpose(0, 1) 
+            
             batch_X, batch_y = batch_X.float().to(device=device), batch_y.float().to(device=device)
             preds = model(batch_X)
             true_vals[:, i_batch*batch_size:(i_batch+1)*batch_size, :] = batch_y.detach().cpu()
@@ -80,7 +81,7 @@ def train_model(settings):
             epoch_loss += loss.item() * batch_size
         aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
             # aps = np.where(np.isnan(aps), 1, aps) 
-        aps = 0
+        # aps = 0
         print(sys.argv) 
         return epoch_loss / len(training_set), aps
 
@@ -89,7 +90,7 @@ def train_model(settings):
         batch_size = args.batch_size
         loader = test_loader
         total_batch_size = 0
-        shape = (args.time_step, test_set.len, args.output_dim) 
+        shape = (args.time_step, test_set.len, args.output_dim)
         true_vals = torch.zeros(shape)
         pred_vals = torch.zeros(shape)
         model.eval()
@@ -167,9 +168,6 @@ parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
 parser.add_argument('--time_step', type=int, default=2048,
                     help='number of time step for each sequence(default: 2048)')
-
-# For distributed
-#parser.add_argument("--local_rank", type=int)
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)

@@ -553,7 +553,6 @@ class Decoder_LSTM(nn.Module):
 class Seq2Seq(nn.Module):
     def __init__(self, encoder, decoder, device):
         super().__init__()
-        
         self.encoder = encoder
         self.decoder = decoder
         self.device = device
@@ -563,7 +562,7 @@ class Seq2Seq(nn.Module):
         assert encoder.n_layers == decoder.n_layers, \
             "Encoder and decoder must have equal number of layers!"
         
-    def forward(self, src, trg, teacher_forcing_ratio=0.0):
+    def forward(self, src, trg, dataset, teacher_forcing_ratio=0.0):
         batch_size = trg.shape[1]
         max_len = trg.shape[0]
         trg_input_size = trg.shape[2] 
@@ -586,11 +585,11 @@ class Seq2Seq(nn.Module):
             teacher_force = random.random() < teacher_forcing_ratio
             # top1 = output.max(1)[1]
             # input = (trg[t] if teacher_force else top1)
-            input = (trg[t] if teacher_force else output)              # REQUIRES: ouput_dim = input_dim 
-        outputs = self.out_fc(outputs) 
+            input = (trg[t] if teacher_force else output)
+        outputs = self.out_fc(outputs)
         return outputs # (seq_len, bs, output_dim)
 
-def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device):
+def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset):
     # global device
     with torch.no_grad():
         model.eval()
@@ -599,12 +598,14 @@ def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, c
         for data_batched, label_batched in data_loader:
             cur_batch_size = len(data_batched) 
             src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
-            src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
             trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-            trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
-
-            outputs = model(src=src, trg=trg) # (ts, bs, input_size)
-            loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
+            outputs = model(src=src, trg=trg, dataset=dataset) # (ts, bs, input_size)
+            if dataset == "music":
+                src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
+                trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
+                loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
+            elif dataset == "iq":
+                loss = criterion(outputs, trg)
             epoch_loss += loss 
 
         avg_loss = epoch_loss / float(len(data_loader))
