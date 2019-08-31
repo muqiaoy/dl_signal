@@ -39,8 +39,8 @@ for i in range(len(train_data)):
                 else:
                     Ytrain[j,label.data[1]] = 1
         Xtrain = Xtrain.reshape(k, d*2, order='F')
-        np.save("/home/muqiaoy/low_mem/music_train_x_64_{}.npy".format(index), Xtrain)
-        np.save("/home/muqiaoy/low_mem/music_train_y_64_{}.npy".format(index), Ytrain)
+        np.save("/home/muqiaoy/musicnet/music_train_x_64_{}.npy".format(index), Xtrain)
+        np.save("/home/muqiaoy/musicnet/music_train_y_64_{}.npy".format(index), Ytrain)
         index = index + 1
 
 # create the test set
@@ -63,7 +63,7 @@ for i in range(len(test_data)):
                 else:
                     Ytest[j,label.data[1]] = 1
         Xtest = Xtest.reshape(k_test, d*2, order='F')
-        np.save("/home/muqiaoy/low_mem/music_test_x_64_{}.npy".format(index), Xtest)
-        np.save("/home/muqiaoy/low_mem/music_test_y_64_{}.npy".format(index), Ytest)
+        np.save("/home/muqiaoy/musicnet/music_test_x_64_{}.npy".format(index), Xtest)
+        np.save("/home/muqiaoy/musicnet/music_test_y_64_{}.npy".format(index), Ytest)
         index = index + 1
 print("finished")
