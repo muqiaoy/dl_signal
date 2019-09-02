@@ -76,7 +76,7 @@ def train_model(settings):
 
             # clear gradients
             model.zero_grad() 
-            outputs = model(x=src, y=trg) 
+            outputs = model(x=src, max_len=len(trg)) 
             loss = criterion(outputs, trg)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
