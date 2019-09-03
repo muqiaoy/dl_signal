@@ -99,7 +99,7 @@ def train_model(settings):
                 src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
                 trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
                
-                outputs = model(x=src, y=trg)
+                outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs, trg)
                 epoch_loss += loss
         avg_loss = epoch_loss / float(len(test_loader))

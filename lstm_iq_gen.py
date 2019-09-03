@@ -126,7 +126,7 @@ for epoch in range(args.epoch):
         cur_batch_size = len(data_batched) 
         src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
         trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-        outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5, dataset="iq") # (ts, bs, input_size)
+        outputs = model(src=src, trg=trg, teacher_forcing_ratio=1.0, dataset="iq") # (ts, bs, input_size)
         op.zero_grad()
         loss = criterion(outputs, trg)
         loss.backward()
