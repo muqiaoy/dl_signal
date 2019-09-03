@@ -78,8 +78,19 @@ def train_model(settings):
 
             # clear gradients
             model.zero_grad() 
+            print(i_batch)
+            print("x, y", data_batched.mean().item(), label_batched.mean().item())
             outputs = model(x=src, y=trg) 
+            print("final_out", outputs.mean().item())
+            if torch.isnan(outputs).sum().item() > 0:
+                print(outputs)
+                assert False
+            #outputs = model(x=src, max_len=len(trg))
             loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
+            print("loss", loss.mean().item())
+            if torch.isnan(loss).sum().item() > 0:
+                print(loss)
+                assert False
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
@@ -93,7 +104,6 @@ def train_model(settings):
     def evaluate(model, criterion):
         model.eval()
         epoch_loss = 0
-
         with torch.no_grad():
             for i_batch, (data_batched, label_batched) in enumerate(test_loader):
                 cur_batch_size = len(data_batched)
@@ -102,7 +112,8 @@ def train_model(settings):
                 trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
 
                 # clear gradients
-                model.zero_grad()
+                # model.zero_grad()
+                #outputs = model(x=src, max_len=len(trg), start=trg[0].unsqueeze(0))
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
                 epoch_loss += loss
@@ -119,9 +130,9 @@ def train_model(settings):
         print('Epoch {:2d} | Train Loss {:5.4f}'.format(epoch, train_loss))
         test_loss = evaluate(model, criterion)
         scheduler.step(test_loss)
-        print("-"*50)
+        #print("-"*50)
         print('Epoch {:2d} | Test  Loss {:5.4f}'.format(epoch, test_loss))
-        print("-"*50)
+        #print("-"*50)
 
         end = time.time()
         print("time: %d" % (end - start))
@@ -209,6 +220,7 @@ else:
     test_set = SignalDataset_music(args.path, time_step=total_time_step, train=False)
 
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
+print("len(training_set)", len(training_set))
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
 
 end = time.time() 

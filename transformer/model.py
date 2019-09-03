@@ -185,20 +185,23 @@ class TransformerGenerationModel(nn.Module):
         return TransformerDecoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, src_attn_dropout=self.attn_dropout, 
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, tgt_attn_dropout=self.attn_dropout)
             
-    def forward(self, x, y=None, max_len=None):
+    def forward(self, x, y=None, max_len=None, start=None):
         """
         x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).  
         """
         time_step, batch_size, n_features = x.shape
         input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
         input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
-
+        print("input_a, input_b", input_a.mean().item(), input_b.mean().item())
         input_a, input_b = self.conv(input_a, input_b)
         input_a = input_a.reshape(-1, batch_size, self.d_a)
         input_b = input_b.reshape(-1, batch_size, self.d_b)
+        print("input_a, input_b", input_a.mean().item(), input_b.mean().item())
         input_a, input_b = self.proj_enc(input_a, input_b)
+        print("input_a, input_b", input_a.mean().item(), input_b.mean().item())
         # Pass the input through individual transformers
         h_as, h_bs = self.trans_encoder(input_a, input_b)
+        print("h_as, h_bs", h_as.mean().item(), h_bs.mean().item())
 
         if y is not None:
             seq_len, batch_size, n_features2 = y.shape 
@@ -213,18 +216,28 @@ class TransformerGenerationModel(nn.Module):
             y_b = torch.cat([sos_b, y_b], dim=0)    # add <sos> to front 
 
             y_a, y_b = self.proj_dec(y_a, y_b)
+            print("y_a, y_b", y_a.mean().item(), y_b.mean().item())
             out_as, out_bs = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
+            #print(out_as.mean().item(), out_bs.mean().item())
 
             # out_ls = out_ls[:-1]  # no need to slice if we <sos> to front and truncate last 
             # out_as = out_as[:-1]
-
+            print("out_as, out_bs", out_as.mean().item(), out_bs.mean().item())
             out_concat = torch.cat([out_as, out_bs], dim=-1)
+            print("out_concat", out_concat.mean().item())
             
             output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
 
         elif max_len is not None:
-            dec_a = torch.zeros(1, batch_size, n_features//2).cuda()
-            dec_b = torch.zeros(1, batch_size, n_features//2).cuda()
+            if start is None:
+                #dec_a = torch.rand(1, batch_size, n_features//2).cuda()
+                #dec_b = torch.rand(1, batch_size, n_features//2).cuda()
+                #dec_a = torch.ones(1, batch_size, n_features//2).cuda()
+                #dec_b = torch.ones(1, batch_size, n_features//2).cuda()
+                dec_a = torch.zeros(1, batch_size, n_features//2).cuda()
+                dec_b = torch.zeros(1, batch_size, n_features//2).cuda()
+            else:
+                dec_a, dec_b = start[:, :, :n_features//2], start[:, :, n_features//2:]
             dec_a, dec_b = self.proj_dec(dec_a, dec_b)
 
             # y_a = torch.cat([sos_a, y_a], dim=0)    # add <sos> to front 
@@ -234,6 +247,7 @@ class TransformerGenerationModel(nn.Module):
 
             for i in range(max_len - 1):
                 dec_a, dec_b = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
+                #print(dec_a[-1].mean().item(), dec_b[-1].mean().item())
                 y_a, y_b = torch.cat([y_a, dec_a[-1].unsqueeze(0)], dim=0), torch.cat([y_b, dec_b[-1].unsqueeze(0)], dim=0)
                 # dec_a, dec_b = out_as[-1].unsqueeze(0), out_bs[-1].unsqueeze(0)
 

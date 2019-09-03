@@ -120,9 +120,9 @@ class TransformerEncoderLayer(nn.Module):
         x_A = x_aaa - x_abb - x_bab - x_bba
         x_B = -x_bbb + x_baa + x_aba + x_aab
         
+         
         x_A = self.layer_norms_A[0](x_A)
         x_B = self.layer_norms_B[0](x_B)
-        
         # Dropout and Residual
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
@@ -145,6 +145,7 @@ class TransformerEncoderLayer(nn.Module):
         # FC2
         x_A, x_B = self.fc2(x_A, x_B)
 
+        
         x_A = self.layer_norms_A[1](x_A)
         x_B = self.layer_norms_B[1](x_B)
 
@@ -295,12 +296,12 @@ class TransformerDecoderLayer(nn.Module):
         x_B = -x_bbb + x_baa + x_aba + x_aab
         
         # Layer Norm, Dropout and Residual;
-        x_A = self.layer_norms_A[0](x_A)
-        x_B = self.layer_norms_B[0](x_B)
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
         x_A += residual_A 
         x_B += residual_B
+        x_A = self.layer_norms_A[0](x_A)
+        x_B = self.layer_norms_B[0](x_B)
         
         residual_A = x_A
         residual_B = x_B
@@ -319,12 +320,12 @@ class TransformerDecoderLayer(nn.Module):
         x_B = x_acd + x_adc + x_bcc - x_bdd 
 
         # Layer Norm, Dropout and Residual;
-        x_A = self.layer_norms_A[1](x_A)
-        x_B = self.layer_norms_B[1](x_B)
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
         x_A += residual_A 
         x_B += residual_B
+        x_A = self.layer_norms_A[1](x_A)
+        x_B = self.layer_norms_B[1](x_B)
         
         residual_A = x_A 
         residual_B = x_B
@@ -338,13 +339,14 @@ class TransformerDecoderLayer(nn.Module):
 
         # FC2
         x_A, x_B = self.fc2(x_A, x_B)
-        x_A = self.layer_norms_A[2](x_A)
-        x_B = self.layer_norms_B[2](x_B)
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
         
         x_A += residual_A 
         x_B += residual_B 
+        x_A = self.layer_norms_A[2](x_A)
+        x_B = self.layer_norms_B[2](x_B)
+        #print("Attention here: ", x_A.mean().item(), x_B.mean().item())
 
         return x_A, x_B
 

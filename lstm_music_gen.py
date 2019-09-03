@@ -3,11 +3,8 @@ import os
 import torch
 from torch import nn
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import scale
 import torch.utils
-from sklearn.metrics import confusion_matrix
 import itertools
 from utils import get_meta, get_len, save_checkpoint, count_parameters
 from utils import SignalDataset_music
