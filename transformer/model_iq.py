@@ -35,7 +35,6 @@ class TransformerModel(nn.Module):
         [self.orig_d_a, self.orig_d_b] = input_dims
         assert self.orig_d_a == self.orig_d_b
         self.d_a, self.d_b = 512, 512 
-        self.ntokens = ntokens
         final_out = embed_dim * 2
         h_out = hidden_size
         self.num_heads = num_heads

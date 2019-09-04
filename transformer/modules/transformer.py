@@ -527,8 +527,8 @@ class TransformerConcatDecoderLayer(nn.Module):
             num_heads=self.num_heads,
             attn_dropout=src_attn_dropout,
             bias=True,
-            add_bias_kv=False,
-            add_zero_attn=False, 
+            add_bias_kv=True,
+            add_zero_attn=True, 
         )
         self.src_mask = src_mask   # used as last arg in forward function call 
         self.tgt_mask = tgt_mask   # used as last arg in forward function call 
@@ -541,8 +541,8 @@ class TransformerConcatDecoderLayer(nn.Module):
             num_heads=self.num_heads, 
             attn_dropout=tgt_attn_dropout, 
             bias=True,
-            add_bias_kv=False, 
-            add_zero_attn=False, 
+            add_bias_kv=True, 
+            add_zero_attn=True, 
         )
 
         self.fc1 = nn.Linear(self.embed_dim, self.embed_dim)
@@ -558,9 +558,9 @@ class TransformerConcatDecoderLayer(nn.Module):
             mask = None
         x, _ = self.self_attn(x, x, x)
         # Layer Norm, Dropout and Residual;
-        x = self.layer_norms[0](x)
         x = F.dropout(x, p=self.res_dropout, training=self.training)
         x += residual
+        x = self.layer_norms[0](x)
         
         residual = x
         
@@ -568,9 +568,9 @@ class TransformerConcatDecoderLayer(nn.Module):
         x, _ = self.attn(x, enc, enc) 
 
         # Layer Norm, Dropout and Residual;
-        x = self.layer_norms[1](x)
         x = F.dropout(x, p=self.res_dropout, training=self.training)
         x += residual
+        x = self.layer_norms[1](x)
         
         residual = x
 
@@ -610,7 +610,7 @@ def Linear(in_features, out_features, bias=True):
 
 
 def LayerNorm(embedding_dim):
-    m = nn.LayerNorm(embedding_dim, eps=1e-7)
+    m = nn.LayerNorm(embedding_dim, eps=1e-20)
     return m
 
 

@@ -81,8 +81,7 @@ def train_model(settings):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
-
-            epoch_loss += loss 
+            epoch_loss += loss.detach().item() 
 
         avg_loss = epoch_loss / float(len(train_loader))
 
@@ -101,7 +100,7 @@ def train_model(settings):
                
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs, trg)
-                epoch_loss += loss
+                epoch_loss += loss.detach().item()
         avg_loss = epoch_loss / float(len(test_loader))
         return avg_loss
 

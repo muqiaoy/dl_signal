@@ -24,28 +24,34 @@ Preprocess the MusicNet dataset as stated in the paper: <br />
 `python parse_file.py`<br />
 
 Sample command line for automatic music transcription: <br />
-`python -u transformer/train.py --data music --path path --time_step 64 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 2048 2048 --embed_dim 320 --output_dim 128 --num_heads 8 --seed 1111 --lr 0.001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 32`<br />
+`python -u transformer/train.py --data music --path path --time_step 64 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 2048 2048 --embed_dim 320 --output_dim 128 --num_heads 8 --seed 1111 --lr 0.001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 16`<br />
 
-Concatenated transformer or automatic music transcription: <br />
+Concatenated transformer for automatic music transcription: <br />
 `python -u transformer/train_concat.py --data music --path path --time_step 64 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 2048 2048 --embed_dim 320 --output_dim 128 --num_heads 8 --seed 1111 --lr 0.001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 32`<br />
 
 For MusicNet generation tasks: <br />
-`python -u transformer/train_gen.py --path path --lr 0.001 --hidden_size 2048 --output_dim 128 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
+`python -u transformer/train_gen.py --path path --lr 0.0001 --hidden_size 2048 --output_dim 128 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
 
-Concatenated transformer: <br />
-`python -u transformer/train_gen_concat.py --path path --lr 0.001 --hidden_size 2048 --output_dim 128 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
+Concatenated transformer for MusicNet generation: <br />
+`python -u transformer/train_gen_concat.py --path path --lr 0.0001 --hidden_size 2048 --output_dim 128 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
+
+For IQ classification task: <br />
+`python -u transformer/train_iq.py --data iq --path iq/ --time_step 20 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 80 80 --output_dim 1000 --num_heads 8 --seed 1111 --lr 0.001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 32 --embed_dim 320`<br />
+
+Concatenated transformer for IQ classification task: <br />
+`python -u transformer/train_iq_concat.py --data iq --path iq/ --time_step 20 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 80 80 --output_dim 1000 --num_heads 8 --seed 1111 --lr 0.001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 32 --embed_dim 320`<br />
 
 For IQ generation tasks: <br />
-`python -u transformer/train_gen_iq.py --path path --data iq --lr 0.001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 200 --out_dropout 0.5`<br />
+`python -u transformer/train_gen_iq.py --path path --data iq --lr 0.0001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 128 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 200 --out_dropout 0.5`<br />
 
-Concatenated transformer: <br />
-`python -u transformer/train_gen_iq_concat.py --path path --data iq --lr 0.001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 200 --out_dropout 0.5`<br />
+Concatenated transformer for IQ generation: <br />
+`python -u transformer/train_gen_iq_concat.py --path path --data iq --lr 0.0001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 128 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 200 --out_dropout 0.5`<br />
 
 LSTM for MusicNet generation: <br />
 `python -u lstm_music_gen.py --path path --batch_size 8 --hidden_size 800 --num_layers 3 --fc_hidden_size 2048 --output_dim 128 --lr 0.001 --dropout 0.5  --src_time_step 40 --trg_time_step 24`<br />
 
 LSTM for IQ generation: <br />
-`python3.6 -u lstm_iq_gen.py --path path --batch_size 8 --hidden_size 800 --num_layers 3 --fc_hidden_size 800 --src_time_step 40 --trg_time_step 24 --output_dim 50   `<br />
+`python -u lstm_iq_gen.py --path path --batch_size 8 --hidden_size 800 --num_layers 3 --fc_hidden_size 800 --src_time_step 40 --trg_time_step 24 --output_dim 50   `<br />
 <!-- To configure parameters, directly configure it through command line.<br />
 ## Model Selection
 If we want to train the dataset using fnn, set <br />

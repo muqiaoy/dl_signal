@@ -40,7 +40,7 @@ def train_transformer():
 
     print("Model size: {0}".format(count_parameters(model)))
 
-    optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
+    optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=0)
     criterion= nn.MSELoss() 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
@@ -95,7 +95,7 @@ def train_model(settings):
                 cur_batch_size = len(data_batched)
                 src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
                 trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-                outputs = model(x=src, y=trg)
+                outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs, trg)
                 epoch_loss += loss
         avg_loss = epoch_loss / float(len(test_loader))
