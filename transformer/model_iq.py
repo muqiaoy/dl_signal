@@ -130,7 +130,7 @@ class TransformerGenerationModel(nn.Module):
         return TransformerDecoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, src_attn_dropout=self.attn_dropout, 
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, tgt_attn_dropout=self.attn_dropout)
             
-    def forward(self, x, y):
+    def forward(self, x, y=None, max_len=None):
         """
         x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).  
         """
@@ -143,19 +143,43 @@ class TransformerGenerationModel(nn.Module):
         input_a, input_b = self.proj_enc(input_a, input_b)
         h_as, h_bs = self.trans_encoder(input_a, input_b)
 
-        seq_len, batch_size, n_features2 = y.shape 
-        n_features = n_features2 // 2
-        y_a = y[:-1, :, :self.orig_d_a]                               # truncate last target 
-        y_b = y[:-1, :, self.orig_d_a: self.orig_d_a + self.orig_d_b] # truncate last target 
-        sos_a = torch.zeros(1, batch_size, n_features).cuda()
-        sos_b = torch.zeros(1, batch_size, n_features).cuda()
-        y_a = torch.cat([sos_a, y_a], dim=0)    # add <sos> to front 
-        y_b = torch.cat([sos_b, y_b], dim=0)    # add <sos> to front 
-        y_a, y_b = self.proj_dec(y_a, y_b)
-        out_as, out_bs = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
-        out_concat = torch.cat([out_as, out_bs], dim=-1)
-        
-        output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
+        if y is not None:
+            seq_len, batch_size, n_features2 = y.shape 
+            n_features = n_features2 // 2
+            y_a = y[:-1, :, :self.orig_d_a]                               # truncate last target 
+            y_b = y[:-1, :, self.orig_d_a: self.orig_d_a + self.orig_d_b] # truncate last target 
+            sos_a = torch.zeros(1, batch_size, n_features).cuda()
+            sos_b = torch.zeros(1, batch_size, n_features).cuda()
+            y_a = torch.cat([sos_a, y_a], dim=0)    # add <sos> to front 
+            y_b = torch.cat([sos_b, y_b], dim=0)    # add <sos> to front 
+            y_a, y_b = self.proj_dec(y_a, y_b)
+            out_as, out_bs = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
+            out_concat = torch.cat([out_as, out_bs], dim=-1)
+            
+            output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
+
+        elif max_len is not None:
+            dec_a = torch.zeros(1, batch_size, n_features//2).cuda()
+            dec_b = torch.zeros(1, batch_size, n_features//2).cuda()
+            dec_a, dec_b = self.proj_dec(dec_a, dec_b)
+
+            dec_a, dec_b = self.trans_decoder(input_A=dec_a, input_B=dec_b, enc_A=h_as, enc_B=h_bs) 
+            y_a, y_b = dec_a, dec_b
+
+            for i in range(max_len - 1):
+                dec_a, dec_b = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
+                y_a, y_b = torch.cat([y_a, dec_a[-1].unsqueeze(0)], dim=0), torch.cat([y_b, dec_b[-1].unsqueeze(0)], dim=0)
+
+            # out_ls = out_ls[:-1]  # no need to slice if we <sos> to front and truncate last 
+            # out_as = out_as[:-1]
+
+            out_concat = torch.cat([y_a, y_b], dim=-1)
+            
+            output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
+
+        else:
+            print("Only one of y and max_len should be input.")
+            assert False
 
 
         return output

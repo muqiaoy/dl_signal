@@ -40,7 +40,7 @@ def train_transformer():
 
     print("Model size: {0}".format(count_parameters(model)))
 
-    optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
+    optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=0)
     criterion= nn.BCEWithLogitsLoss() 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
@@ -78,16 +78,16 @@ def train_model(settings):
 
             # clear gradients
             model.zero_grad() 
-            print(i_batch)
-            print("x, y", data_batched.mean().item(), label_batched.mean().item())
+            # print(i_batch)
+            # print("x, y", data_batched.mean().item(), label_batched.mean().item())
             outputs = model(x=src, y=trg) 
-            print("final_out", outputs.mean().item())
-            if torch.isnan(outputs).sum().item() > 0:
-                print(outputs)
-                assert False
+            # print("final_out", outputs.mean().item())
+            # if torch.isnan(outputs).sum().item() > 0:
+                # print(outputs)
+                # assert False
             #outputs = model(x=src, max_len=len(trg))
             loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
-            print("loss", loss.mean().item())
+            # print("loss", loss.mean().item())
             if torch.isnan(loss).sum().item() > 0:
                 print(loss)
                 assert False
@@ -95,7 +95,7 @@ def train_model(settings):
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
 
-            epoch_loss += loss 
+            epoch_loss += loss.detach().item()
 
         avg_loss = epoch_loss / float(len(train_loader))
 
@@ -116,7 +116,7 @@ def train_model(settings):
                 #outputs = model(x=src, max_len=len(trg), start=trg[0].unsqueeze(0))
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
-                epoch_loss += loss
+                epoch_loss += loss.detach().item()
         avg_loss = epoch_loss / float(len(test_loader))
         return avg_loss
 

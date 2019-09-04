@@ -610,7 +610,7 @@ def Linear(in_features, out_features, bias=True):
 
 
 def LayerNorm(embedding_dim):
-    m = nn.LayerNorm(embedding_dim)
+    m = nn.LayerNorm(embedding_dim, eps=1e-7)
     return m
 
 
