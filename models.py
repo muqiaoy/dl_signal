@@ -557,6 +557,7 @@ class Seq2Seq(nn.Module):
         self.decoder = decoder
         self.device = device
         self.out_fc = nn.Linear(decoder.output_dim, decoder.final_output_dim)
+        self.final_fc = nn.Linear(decoder.final_output_dim, 1000)
         assert encoder.hid_dim == decoder.hid_dim, \
             "Hidden dimensions of encoder and decoder must be equal!"
         assert encoder.n_layers == decoder.n_layers, \
@@ -587,6 +588,8 @@ class Seq2Seq(nn.Module):
             # input = (trg[t] if teacher_force else top1)
             input = (trg[t] if teacher_force else output)
         outputs = self.out_fc(outputs)
+        if dataset == "iq":
+            outputs = self.final_fc(outputs[-1])
         return outputs # (seq_len, bs, output_dim)
 
 def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset):
@@ -599,14 +602,14 @@ def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, c
             cur_batch_size = len(data_batched) 
             src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
             trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
+            trg_label = label_batched.cuda()
             outputs = model(src=src, trg=trg, dataset=dataset) # (ts, bs, input_size)
             if dataset == "music":
-                src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
                 trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
             elif dataset == "iq":
-                loss = criterion(outputs, trg)
-            epoch_loss += loss 
+                loss = criterion(outputs.double(), trg_label.long())
+            epoch_loss += loss.detach().item() 
 
         avg_loss = epoch_loss / float(len(data_loader))
         print("%s loss %f" % (name, avg_loss))

@@ -106,6 +106,8 @@ class TransformerGenerationModel(nn.Module):
         self.out_fc1 = nn.Linear(final_out, h_out)
         
         self.out_fc2 = nn.Linear(h_out, output_dim)
+   
+        self.out_fc3 = nn.Linear(output_dim, 1000)
         
         self.out_dropout = nn.Dropout(out_dropout)
 
@@ -153,4 +155,5 @@ class TransformerGenerationModel(nn.Module):
         else:
             print("Only one of y and max_len should be input.")
             assert False
+        output = F.relu(self.out_fc3(output[-1])) # use last time step to generate a label for entire sequence
         return output

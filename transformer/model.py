@@ -102,7 +102,6 @@ class TransformerModel(nn.Module):
         # input_b = torch.index_select(x, 2, odd_indices).view(-1, 1, n_features//2) # (bs, input_size/2) 
         input_a = x[:, :, :n_features//2].view(-1, 1, n_features//2)
         input_b = x[:, :, n_features//2:].view(-1, 1, n_features//2)
-
         input_a, input_b = self.conv(input_a, input_b)
         input_a = input_a.reshape(time_step, batch_size, self.d_a)
         input_b = input_b.reshape(time_step, batch_size, self.d_b)
@@ -239,6 +238,5 @@ class TransformerGenerationModel(nn.Module):
         else:
             print("Only one of y and max_len should be input.")
             assert False
-
 
         return output

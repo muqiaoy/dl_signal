@@ -87,6 +87,7 @@ class TransformerGenerationModel(nn.Module):
         assert self.orig_d_a == self.orig_d_b
         self.d_a, self.d_b = 512, 512
         final_out = embed_dim * 2
+        # final_out = embed_dim * 2
         h_out = hidden_size
         self.num_heads = num_heads
         self.layers = layers
@@ -117,6 +118,8 @@ class TransformerGenerationModel(nn.Module):
         self.out_fc1 = nn.Linear(final_out, h_out)
         
         self.out_fc2 = nn.Linear(h_out, output_dim)
+  
+        self.out_fc3 = nn.Linear(output_dim, 1000)
         
         self.out_dropout = nn.Dropout(out_dropout)
 
@@ -141,7 +144,6 @@ class TransformerGenerationModel(nn.Module):
         input_b = self.fc_b(input_b)
         input_a, input_b = self.proj_enc(input_a, input_b)
         h_as, h_bs = self.trans_encoder(input_a, input_b)
-
         if y is not None:
             seq_len, batch_size, n_features2 = y.shape 
             n_features = n_features2 // 2
@@ -154,7 +156,6 @@ class TransformerGenerationModel(nn.Module):
             y_a, y_b = self.proj_dec(y_a, y_b)
             out_as, out_bs = self.trans_decoder(input_A=y_a, input_B=y_b, enc_A=h_as, enc_B=h_bs)
             out_concat = torch.cat([out_as, out_bs], dim=-1)
-            
             output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
 
         elif max_len is not None:
@@ -173,12 +174,7 @@ class TransformerGenerationModel(nn.Module):
             # out_as = out_as[:-1]
 
             out_concat = torch.cat([y_a, y_b], dim=-1)
-            
             output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
-
-        else:
-            print("Only one of y and max_len should be input.")
-            assert False
-
+        output = F.relu(self.out_fc3(output[-1])) # use last time step to generate a label for entire sequence
 
         return output

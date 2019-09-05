@@ -41,7 +41,7 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=0)
-    criterion= nn.MSELoss() 
+    criterion= nn.CrossEntropyLoss() 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
@@ -73,11 +73,10 @@ def train_model(settings):
             cur_batch_size = len(data_batched) 
             src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
             trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-
-            # clear gradients
+            trg_label = label_batched.cuda()
             model.zero_grad() 
             outputs = model(x=src, y=trg) 
-            loss = criterion(outputs, trg)
+            loss = criterion(outputs.double(), trg_label.long())
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
@@ -97,9 +96,9 @@ def train_model(settings):
                 cur_batch_size = len(data_batched)
                 src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
                 trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-               
+                trg_label = label_batched.cuda() 
                 outputs = model(x=src, max_len=len(trg))
-                loss = criterion(outputs, trg)
+                loss = criterion(outputs.double(), trg_label.long())
                 epoch_loss += loss.detach().item()
         avg_loss = epoch_loss / float(len(test_loader))
         return avg_loss

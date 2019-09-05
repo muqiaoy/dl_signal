@@ -577,10 +577,10 @@ class TransformerConcatDecoderLayer(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, p=self.relu_dropout, training=self.training)
         x = self.fc2(x)
-        x = self.layer_norms[2](x)
         x = F.dropout(x, p=self.relu_dropout, training=self.training)
         
         x += residual
+        x = self.layer_norms[2](x)
 
         return x
 
