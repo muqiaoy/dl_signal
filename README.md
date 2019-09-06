@@ -36,10 +36,10 @@ Concatenated transformer for MusicNet generation: <br />
 `python -u transformer/train_gen_concat.py --path path --lr 0.0001 --hidden_size 2048 --output_dim 128 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 32 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
 
 For IQ classification task: <br />
-`python -u transformer/train_iq.py --data iq --path iq/ --time_step 20 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 80 80 --output_dim 1000 --num_heads 8 --seed 1111 --lr 0.0001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 128 --embed_dim 320`<br />
+`python -u transformer/train_iq.py --data iq --path path --time_step 20 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 80 80 --output_dim 1000 --num_heads 8 --seed 1111 --lr 0.0001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 128 --embed_dim 320`<br />
 
 Concatenated transformer for IQ classification task: <br />
-`python -u transformer/train_iq_concat.py --data iq --path iq/ --time_step 20 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 80 80 --output_dim 1000 --num_heads 8 --seed 1111 --lr 0.0001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 128 --embed_dim 320`<br />
+`python -u transformer/train_iq_concat.py --data iq --path path --time_step 20 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --modal_lengths 80 80 --output_dim 1000 --num_heads 8 --seed 1111 --lr 0.0001 --clip 0.35 --optim Adam --hidden_size 2048 --nlevels 6 --batch_size 128 --embed_dim 320`<br />
 
 For IQ generation tasks: <br />
 `python -u transformer/train_gen_iq.py --path path --data iq --lr 0.001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 128 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 320 --out_dropout 0.5`<br />
