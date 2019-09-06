@@ -82,7 +82,7 @@ def train_model(settings):
             optimizer.step()
             epoch_loss += loss.detach().item() 
 
-        avg_loss = epoch_loss / float(len(train_loader))
+        avg_loss = epoch_loss / float(len(training_set))
 
         return avg_loss
 
@@ -100,7 +100,7 @@ def train_model(settings):
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs.double(), trg_label.long())
                 epoch_loss += loss.detach().item()
-        avg_loss = epoch_loss / float(len(test_loader))
+        avg_loss = epoch_loss / float(len(test_set))
         return avg_loss
 
 

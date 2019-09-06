@@ -81,7 +81,7 @@ def train_model(settings):
             optimizer.step()
             epoch_loss += loss.detach().item()
 
-        avg_loss = epoch_loss / float(len(train_loader))
+        avg_loss = epoch_loss / float(len(training_set))
 
         return avg_loss
 
@@ -99,7 +99,7 @@ def train_model(settings):
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs.double(), trg_label.long())
                 epoch_loss += loss.detach().item()
-        avg_loss = epoch_loss / float(len(test_loader))
+        avg_loss = epoch_loss / float(len(test_set))
         return avg_loss
 
 
@@ -193,7 +193,7 @@ else:
 
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
-
+print("train_set", len(training_set))
 end = time.time() 
 print("Loading data time: %d" % (end - start))
 

@@ -592,7 +592,7 @@ class Seq2Seq(nn.Module):
             outputs = self.final_fc(outputs[-1])
         return outputs # (seq_len, bs, output_dim)
 
-def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset):
+def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset, dataset_raw):
     # global device
     with torch.no_grad():
         model.eval()
@@ -611,6 +611,6 @@ def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, c
                 loss = criterion(outputs.double(), trg_label.long())
             epoch_loss += loss.detach().item() 
 
-        avg_loss = epoch_loss / float(len(data_loader))
+        avg_loss = epoch_loss / float(len(dataset_raw))
         print("%s loss %f" % (name, avg_loss))
     return avg_loss 

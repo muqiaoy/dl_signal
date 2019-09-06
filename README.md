@@ -48,10 +48,10 @@ Concatenated transformer for IQ generation: <br />
 `python -u transformer/train_gen_iq_concat.py --path path --data iq --lr 0.0001 --hidden_size 2048 --num_epochs 2000 --attn_dropout 0 --relu_dropout 0.1 --res_dropout 0.1 --batch_size 128 --src_time_step 40 --trg_time_step 24 --nlevels 6 --embed_dim 200 --out_dropout 0.5`<br />
 
 LSTM for MusicNet generation: <br />
-`python -u lstm_music_gen.py --path path --batch_size 4096 --hidden_size 800 --num_layers 3 --fc_hidden_size 2048 --output_dim 128 --lr 0.001 --dropout 0.5  --src_time_step 40 --trg_time_step 24 --bidirection`<br />
+`python -u lstm_music_gen.py --path path --batch_size 4096 --hidden_size 800 --num_layers 3 --fc_hidden_size 2048 --output_dim 128 --lr 0.001 --dropout 0.5  --src_time_step 40 --trg_time_step 24`<br />
 
 LSTM for IQ generation: <br />
-`python -u lstm_iq_gen.py --path path --batch_size 4096 --hidden_size 800 --num_layers 3 --fc_hidden_size 800 --src_time_step 40 --trg_time_step 24 --output_dim 50 --bidirection  `<br />
+`python -u lstm_iq_gen.py --path path --batch_size 4096 --hidden_size 800 --num_layers 3 --fc_hidden_size 800 --src_time_step 40 --trg_time_step 24 --output_dim 50`<br />
 <!-- To configure parameters, directly configure it through command line.<br />
 ## Model Selection
 If we want to train the dataset using fnn, set <br />
