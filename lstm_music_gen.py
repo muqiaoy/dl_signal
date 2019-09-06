@@ -123,7 +123,7 @@ for epoch in range(args.epoch):
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         op.step()
     
-    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "music", traininig_set) 
+    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "music", training_set) 
     loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device, "music", test_set) 
     
     # anneal learning 
