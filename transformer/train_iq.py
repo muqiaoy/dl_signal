@@ -38,7 +38,7 @@ def train_transformer():
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
     # For Rprop and SparseAdam and LBFGS
     #optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction="sum")
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
     settings = {'model': model,
                 'optimizer': optimizer,
@@ -72,7 +72,7 @@ def train_model(settings):
             optimizer.step()
             total_batch_size += batch_size
             total_correct += (batch_y == preds.argmax(-1)).sum()
-            epoch_loss += loss.item() * batch_size
+            epoch_loss += loss.detach().item()
         aps = float(total_correct) / float(total_batch_size) 
         return epoch_loss / len(training_set), aps
 
@@ -91,7 +91,7 @@ def train_model(settings):
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
                 total_correct += (batch_y == preds.argmax(-1)).sum()
-                epoch_loss += loss.item() * batch_size
+                epoch_loss += loss.detach().item()
             aps = float(total_correct) / float(total_batch_size)
         return epoch_loss / len(test_set), aps
 

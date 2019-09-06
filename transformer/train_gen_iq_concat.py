@@ -41,7 +41,7 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=0)
-    criterion= nn.CrossEntropyLoss()
+    criterion= nn.CrossEntropyLoss(reduction="sum")
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
     settings = {'model': model,
