@@ -41,7 +41,7 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=0)
-    criterion= nn.BCEWithLogitsLoss(reduction="sum") 
+    criterion= nn.BCEWithLogitsLoss() 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
@@ -85,7 +85,7 @@ def train_model(settings):
 
             epoch_loss += loss.detach().item() 
 
-        avg_loss = epoch_loss / float(len(training_set))
+        avg_loss = epoch_loss / float(len(train_loader))
 
         return avg_loss
 
@@ -101,7 +101,7 @@ def train_model(settings):
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
                 epoch_loss += loss.detach().item()
-        avg_loss = epoch_loss / float(len(test_set))
+        avg_loss = epoch_loss / float(len(test_loader))
         return avg_loss
 
 

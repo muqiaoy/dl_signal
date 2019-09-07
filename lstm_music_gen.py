@@ -97,7 +97,7 @@ encoder = Encoder_LSTM(**params_model)
 decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim, fc_hidden_dim=fc_hidden_size)
 model = Seq2Seq(encoder, decoder, device).to(device) 
 print("Model size: {0}".format(count_parameters(model)))
-criterion = nn.BCEWithLogitsLoss(reduction="sum")
+criterion = nn.BCEWithLogitsLoss()
 op = torch.optim.Adam(model.parameters())
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     op, patience=2, factor=0.5, verbose=True)
