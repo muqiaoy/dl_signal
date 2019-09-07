@@ -1,11 +1,22 @@
 # Complex Transformer
 A deep learning model which incorporates the transformer model as a backbone and develop complex attention and encoder/decoder network operating on complex-valued input.<br />
-This model achieves state-of-the-art results on music transcription tasks. The detail is in a paper we will publish soon.
+This model achieves state-of-the-art results on music transcription tasks. The detail is in a paper we will publish soon.<br />
 
+## Dependency
+`python=3.6`
 ## transformer model
 <p align="center">
   <img src="https://github.com/martinmamql/dl_signal/blob/master/img/transformer.png" alt="Complex Transformer"/>
 </p>
+## File parsing
+`cd music/`<br />
+`wget  https://homes.cs.washington.edu/~thickstn/media/musicnet.npz`<br />
+`python3 -u resample.py musicnet.npz musicnet_11khz.npz 44100 11000`<br />
+`rm musicnet.npz`<br />
+`python3 -u parse_file.py`<br />
+`rm musicnet_11khz.npz`<br />
+`cd ..`<br />
+(This process is quite long)
 
 ## Instruction
 Preprocess the MusicNet dataset as stated in the paper: <br />
