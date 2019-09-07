@@ -609,7 +609,7 @@ def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, c
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
             elif dataset == "iq":
                 loss = criterion(outputs.double(), trg_label.long())
-            epoch_loss += loss.detach().item() 
+            epoch_loss += loss.detach().item()
 
         avg_loss = epoch_loss / float(len(dataset_raw))
         print("%s loss %f" % (name, avg_loss))
