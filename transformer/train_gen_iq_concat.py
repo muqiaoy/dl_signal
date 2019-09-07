@@ -122,16 +122,15 @@ def train_model(settings):
 
 
 parser = argparse.ArgumentParser(description='Signal Data Analysis')
-parser.add_argument('-f', default='', type=str)
 parser.add_argument('--model', type=str, default='Transformer',
                     help='name of the model to use (Transformer, etc.)')
-parser.add_argument('--embed_dim', type=int, default=128,
-                    help='dimension of real and imag embeddimg before transformer (default: 100)')
-parser.add_argument('--data', type=str, default='music')
-parser.add_argument('--path', type=str, default='data',
+parser.add_argument('--embed_dim', type=int, default=320,
+                    help='dimension of real and imag embeddimg before transformer (default: 320)')
+parser.add_argument('--data', type=str, default='iq')
+parser.add_argument('--path', type=str, default='iq/',
                     help='path for storing the dataset')
-parser.add_argument('--src_time_step', type=int, default=30)
-parser.add_argument('--trg_time_step', type=int, default=20)
+parser.add_argument('--src_time_step', type=int, default=40)
+parser.add_argument('--trg_time_step', type=int, default=24)
 parser.add_argument('--attn_dropout', type=float, default=0.0,
                     help='attention dropout')
 parser.add_argument('--relu_dropout', type=float, default=0.1,
@@ -142,24 +141,24 @@ parser.add_argument('--out_dropout', type=float, default=0.5,
                     help='output dropout')
 parser.add_argument('--nlevels', type=int, default=6,
                     help='number of layers in the network (if applicable) (default: 6)')
-parser.add_argument('--num_epochs', type=int, default=200,
-                    help='number of epochs (default: 200)')
+parser.add_argument('--num_epochs', type=int, default=2000,
+                    help='number of epochs (default: 2000)')
 parser.add_argument('--num_heads', type=int, default=8,
                     help='number of heads for the transformer network')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
-parser.add_argument('--batch_size', type=int, default=64, metavar='N',
-                    help='batch size (default: 64)')
+parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+                    help='batch size (default: 128)')
 parser.add_argument('--attn_mask', action='store_true',
                     help='use attention mask for Transformer (default: False)')
-parser.add_argument('--lr', type=float, default=1e-3,
-                    help='initial learning rate (default: 1e-3)')
+parser.add_argument('--lr', type=float, default=1e-4,
+                    help='initial learning rate (default: 1e-4)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
 parser.add_argument('--optim', type=str, default='Adam',
                     help='optimizer to use (default: Adam)')
-parser.add_argument('--hidden_size', type=int, default=200,
-                    help='hidden_size in transformer (default: 200)')
+parser.add_argument('--hidden_size', type=int, default=2048,
+                    help='hidden_size in transformer (default: 2048)')
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
