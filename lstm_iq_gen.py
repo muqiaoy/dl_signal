@@ -21,18 +21,17 @@ print(device)
 
 # parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
-parser.add_argument('--arch', dest='arch', type=str) 
+parser.add_argument('--arch', dest='arch', type=str)
 parser.add_argument('--bidirection', action='store_true')
 parser.add_argument('--data', dest='data', default='iq')
 parser.add_argument('--path', dest='path', type=str)
 parser.add_argument('--batch_size', dest='batch_size', type=int)
-parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200) 
-parser.add_argument('--output_dim', type=int, default=1000)
-parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200) 
-parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) 
+parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200)
+parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200)
+parser.add_argument('--num_layers',dest='num_layers',type=int, default=2)
 parser.add_argument('--dropout',dest='dropout',type=float, default=0.0)
-parser.add_argument('--lr',dest='lr',type=float, default=0.05) 
-parser.add_argument('--momentum', dest='momentum', type=float, default=0.9) 
+parser.add_argument('--lr',dest='lr',type=float, default=0.05)
+parser.add_argument('--momentum', dest='momentum', type=float, default=0.9)
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-7)
 parser.add_argument('--epoch', type=int, default=2000)
 parser.add_argument('--src_time_step', type=int, default=12)
@@ -81,9 +80,9 @@ trg_time_step = args.trg_time_step
 fc_hidden_size = args.fc_hidden_size
 arch = args.arch
 
-total_time_step = src_time_step + trg_time_step 
-if args.data == 'music': 
-    assert(total_time_step == 128)
+total_time_step = src_time_step + trg_time_step
+assert 3200 % total_time_step == 0
+args.output_dim = 3200 // total_time_step
 
 print("Start loading data") 
 start = time.time()
