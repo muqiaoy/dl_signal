@@ -3,7 +3,6 @@ import os
 import torch
 from torch import nn
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import scale
 import torch.utils
@@ -17,7 +16,6 @@ import argparse
 import time 
 import random
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
 
 # parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
@@ -54,8 +52,6 @@ print(args)
 # input_size calculated based on src_time_step and trg_time_step 
 if args.data == 'iq': 
     input_size = int(3200 / (args.src_time_step + args.trg_time_step))
-elif args.data == 'music':
-    input_size = 4096 
 
 params_dataloader = {
     'batch_size' : int(args.batch_size),
@@ -83,7 +79,6 @@ arch = args.arch
 
 total_time_step = src_time_step + trg_time_step
 assert 3200 % total_time_step == 0
-args.output_dim = 3200 // total_time_step
 
 print("Start loading data") 
 start = time.time()
@@ -94,9 +89,6 @@ train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
 end = time.time()
-print("Loading data time: %d" % (end - start))
-print("train len:", len(train_loader)) 
-print("test len:", len(test_loader))
 
 # get num_classes from training data set 
 num_classes = training_set.num_classes

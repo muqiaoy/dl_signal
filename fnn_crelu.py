@@ -1,7 +1,3 @@
-# Complex valued fnn for iq dataset using crelu as activation
-# Hyperparameters are listed in the beginning of main().
-# The loss is calculated in BCELoss.
-
 import torch
 from torch import nn
 import numpy as np
@@ -28,7 +24,6 @@ parser.add_argument('--learning_rate',dest='learning_rate',type=float, default=0
 parser.add_argument('--momentum', dest='momentum', type=float, default=0.0) # applicable to: 'nn','gru'
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=0) # applicable to: 'nn','gru'
 parser.add_argument('--epoch', type=int, default=1000) # applicable to: 'nn','gru'
-# parser.add_argument('--input_size', type=int, default=512) # applicable to: 'nn','gru'
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 
@@ -42,10 +37,7 @@ params_dataloader = {
 }
 
 params_model = {
-    # 'input_size' : int(args.input_size),
     'hidden_size': [int(args.hidden_size)] * int(args.num_layers),
-    #'num_layers' : int(args.num_layers),
-    #'dropout'    : float(args.dropout)
 }
 params_op = {
     'lr'          : float(args.learning_rate),
@@ -76,7 +68,6 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 for epoch in range(args.epoch):
     num_classes = training_set.num_classes
     print("Epoch %d" % epoch)
-    # set model to train mode
     model.train()
     for data_batched, label_batched in train_loader:
         data = data_batched.float().to(device=device)

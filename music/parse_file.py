@@ -7,10 +7,7 @@
 '''
 #This file creates a .npy for each music piece
 import numpy as np                                       # fast vectors and matrices
-import matplotlib.pyplot as plt                          # plotting
 from scipy import fft                                    # fast fourier transform
-from scipy.fftpack import rfft
-
 from intervaltree import Interval,IntervalTree
 fs = 11000            # samples/second
 window_size = 4096    # fourier window size

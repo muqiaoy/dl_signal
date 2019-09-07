@@ -118,9 +118,9 @@ def train_model(settings):
         print('Epoch {:2d} | Train Loss {:5.4f}'.format(epoch, train_loss))
         test_loss = evaluate(model, criterion)
         scheduler.step(test_loss)
-        #print("-"*50)
+        print("-"*50)
         print('Epoch {:2d} | Test  Loss {:5.4f}'.format(epoch, test_loss))
-        #print("-"*50)
+        print("-"*50)
 
         end = time.time()
         print("time: %d" % (end - start))

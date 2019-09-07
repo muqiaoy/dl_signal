@@ -36,8 +36,6 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
-    # For Rprop and SparseAdam and LBFGS
-    #optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
     criterion = nn.BCEWithLogitsLoss()
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
     settings = {'model': model,
@@ -52,7 +50,6 @@ def train_model(settings):
     optimizer = settings['optimizer']
     criterion = settings['criterion']
     scheduler = settings['scheduler']
-    #model = nn.DataParallel(model)
     model.to(device)
     def train(model, optimizer, criterion):
         epoch_loss = 0.0
@@ -80,9 +77,6 @@ def train_model(settings):
             total_batch_size += batch_size
             epoch_loss += loss.item() * batch_size
         aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
-            # aps = np.where(np.isnan(aps), 1, aps) 
-        # aps = 0
-        print(sys.argv) 
         return epoch_loss / len(training_set), aps
 
     def evaluate(model, criterion):
@@ -106,7 +100,6 @@ def train_model(settings):
                 total_batch_size += batch_size
                 epoch_loss += loss.item() * batch_size
             aps = average_precision_score(true_vals.flatten(), pred_vals.flatten())
-            # aps = np.where(np.isnan(aps), 1, aps)
         return epoch_loss / len(test_set), aps
 
 
@@ -178,13 +171,7 @@ torch.backends.cudnn.deterministic = True
 print(args)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# For distributed
-#torch.cuda.set_device(args.local_rank)
 use_cuda = True
-
-# For distributed
-#torch.distributed.init_process_group(backend='nccl', init_method='env://')
-
 """
 Data Loading
 """

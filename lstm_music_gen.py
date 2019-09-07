@@ -5,7 +5,6 @@ from torch import nn
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import torch.utils
-import itertools
 from utils import get_meta, get_len, save_checkpoint, count_parameters
 from utils import SignalDataset_music
 from models import Encoder_LSTM, Decoder_LSTM, Seq2Seq, eval_Seq2Seq
@@ -15,7 +14,6 @@ import time
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 import random
 
-# parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
 parser.add_argument('--bidirection', action='store_true')
 parser.add_argument('--path', dest='music', type=str)

@@ -2,8 +2,11 @@
 A deep learning model which incorporates the transformer model as a backbone and develop complex attention and encoder/decoder network operating on complex-valued input.<br />
 This model achieves state-of-the-art results on music transcription tasks. The detail is in a paper we will publish soon.<br />
 
-## Dependency
-`python=3.6`
+## Requirement
+python: `python=3.6`<br />
+cuda  : `cuda>=9.0`<br />
+packages: `pip install numpy scipy sklearn intervaltree resampy torch`<br />
+This code base relies on GPUs and cuda.
 ## Transformer model
 <p align="center">
   <img src="https://github.com/martinmamql/dl_signal/blob/master/img/transformer.png" alt="Complex Transformer"/>

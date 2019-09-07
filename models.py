@@ -5,7 +5,6 @@ from torch import nn
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.parameter import Parameter
-from sklearn.preprocessing import scale
 import torch.utils
 import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
@@ -26,7 +25,6 @@ class RNN(nn.Module):
                           dropout=dropout
                           )
         
-        # self.out = nn.Linear(hidden_size, output_size)
         self.fc1 = nn.Linear(hidden_size, fc_hidden_size) 
         self.fc2 = nn.Linear(fc_hidden_size, output_size) 
     
@@ -77,7 +75,6 @@ class LSTM(nn.Module):
                           dropout=dropout
                           )
                            
-        # self.out = nn.Linear(hidden_size, output_size)
         self.fc1 = nn.Linear(hidden_size, fc_hidden_size) 
         self.fc2 = nn.Linear(fc_hidden_size, output_size) 
 
@@ -86,17 +83,11 @@ class LSTM(nn.Module):
     def forward(self, x):
         r_out, h_n = self.rnn(x, None)  # r_out: (batch_size, seq_len, hidden_size)
          
-        # output = self.out(r_out) # output: (batch_size, seq_len, output_size)
-
-        # last_layer_output = output[:, -1, :]  # last_layer_output: (batch_size, output_size)
         last_time_step_out = r_out[:, -1,:] 
         last_layer_output = self.fc2(F.relu(self.fc1(last_time_step_out)))
 
         return r_out, nn.functional.log_softmax(last_layer_output, dim=1)
 
-# data: (# sample, seq_len, input_size) 
-# label: (# sample, num_classes) 
-# evaluation function for all RNN models: RNN, GRU, LSTM 
 def eval_RNN_Model(data_loader, time_step, input_size, model, num_classes, loss_func, name, path):
     global device
     with torch.no_grad():
@@ -187,13 +178,10 @@ class FNN_crelu(nn.Module):
         self.fc2_b = torch.Tensor(np.random.randn(output_size) / np.sqrt(output_size)).to(device=device)
         self.dropout = nn.Dropout(dropout)
     
-    # x: (batch_size, 3200) (x[0] = [r, i, r, i, ....]) 
     def forward(self, x):
         global device 
         x = x.to(device=device)
 
-        # get real and imag parts 
-        # batch_size = len(x)
         even_indices = torch.tensor([i for i in range(self.input_size) if i % 2 == 0]).to(device=device)
         odd_indices = torch.tensor([i for i in range(self.input_size) if i % 2 == 1]).to(device=device)
 
@@ -262,7 +250,6 @@ class ComplexConv1d(nn.Module):
         self.conv_i = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 
     def forward(self,input_r, input_i):
-#        assert(input_r.size() == input_i.size())
         return self.conv_r(input_r)-self.conv_i(input_i), \
                self.conv_r(input_i)+self.conv_i(input_r)
 
@@ -489,8 +476,6 @@ class Decoder_LSTM(nn.Module):
         self.n_layers = n_layers
         self.fc_hidden_dim = fc_hidden_dim 
         self.dropout = dropout
-        #assert input_dim == output_dim \
-        #     "Decoder nust have smae input and output dimensions"
     
         self.lstm = nn.LSTM(input_dim, hid_dim, n_layers, dropout = dropout)
         
@@ -544,7 +529,6 @@ class Seq2Seq(nn.Module):
         return outputs # (seq_len, bs, output_dim)
 
 def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset, dataset_raw):
-    # global device
     with torch.no_grad():
         model.eval()
         

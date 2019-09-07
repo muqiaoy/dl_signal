@@ -36,8 +36,6 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
-    # For Rprop and SparseAdam and LBFGS
-    #optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss(reduction="sum")
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
     settings = {'model': model,
@@ -155,8 +153,6 @@ parser.add_argument('--seed', type=int, default=1111,
 parser.add_argument('--time_step', type=int, default=20,
                     help='number of time step for each sequence(default: 20)')
 
-# For distributed
-#parser.add_argument("--local_rank", type=int)
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
@@ -167,12 +163,7 @@ torch.backends.cudnn.deterministic = True
 print(args)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# For distributed
-#torch.cuda.set_device(args.local_rank)
 use_cuda = True
-
-# For distributed
-#torch.distributed.init_process_group(backend='nccl', init_method='env://')
 
 """
 Data Loading

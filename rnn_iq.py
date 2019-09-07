@@ -1,17 +1,9 @@
-# rnn for iq dataset
-# Hyperparameters are listed in the beginning of main().
-# The loss is calculated in NLLLoss.
-
 from __future__ import print_function, division
 import os
 import torch
 from torch import nn
-# import pandas as pd
-# from skimage import io, transform
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import scale
 import torch.utils
 from sklearn.metrics import confusion_matrix
 import itertools
@@ -21,9 +13,7 @@ from models import RNN, GRU, LSTM
 from models import eval_RNN_Model 
 import argparse
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
 
-# parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
 parser.add_argument('--arch', dest='arch', type=str) 
 parser.add_argument('--bidirection', action='store_true')
@@ -121,15 +111,10 @@ for epoch in range(args.epoch):
     model.train()
     for data_batched, label_batched in train_loader:
         cur_batch_size = len(data_batched) 
-        # print(data_batched.shape)
-        # print(cur_batch_size) 
-        # print(time_step) 
-        # print(input_size)
         data_batched = data_batched.reshape(cur_batch_size, time_step, input_size) # (batch_size, feature_dim) -> (batch_size, time_step, input_size) 
 
 
         data = data_batched.float().to(device=device) 
-        # print(label_batched.shape)
         label = np.argmax(label_batched, axis=1).long().view(-1).to(device=device) # (batch_size)
 
 
