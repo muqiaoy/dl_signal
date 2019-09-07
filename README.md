@@ -4,10 +4,11 @@ This model achieves state-of-the-art results on music transcription tasks. The d
 
 ## Dependency
 `python=3.6`
-## transformer model
+## Transformer model
 <p align="center">
   <img src="https://github.com/martinmamql/dl_signal/blob/master/img/transformer.png" alt="Complex Transformer"/>
 </p>
+
 ## File parsing
 `cd music/`<br />
 `wget  https://homes.cs.washington.edu/~thickstn/media/musicnet.npz`<br />
