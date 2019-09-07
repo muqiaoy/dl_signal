@@ -41,7 +41,7 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=0)
-    criterion= nn.BCEWithLogitsLoss() 
+    criterion= nn.BCEWithLogitsLoss(reduction="sum") 
 
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
@@ -77,27 +77,16 @@ def train_model(settings):
             trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
 
             # clear gradients
-            model.zero_grad() 
-            # print(i_batch)
-            # print("x, y", data_batched.mean().item(), label_batched.mean().item())
-            outputs = model(x=src, y=trg) 
-            # print("final_out", outputs.mean().item())
-            # if torch.isnan(outputs).sum().item() > 0:
-                # print(outputs)
-                # assert False
-            #outputs = model(x=src, max_len=len(trg))
+            model.zero_grad()
+            outputs = model(x=src, y=trg)
             loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
-            # print("loss", loss.mean().item())
-            if torch.isnan(loss).sum().item() > 0:
-                print(loss)
-                assert False
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
 
             epoch_loss += loss.detach().item()
 
-        avg_loss = epoch_loss / float(len(train_loader))
+        avg_loss = epoch_loss / float(len(training_set))
 
         return avg_loss
 
@@ -113,11 +102,10 @@ def train_model(settings):
 
                 # clear gradients
                 # model.zero_grad()
-                #outputs = model(x=src, max_len=len(trg), start=trg[0].unsqueeze(0))
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
                 epoch_loss += loss.detach().item()
-        avg_loss = epoch_loss / float(len(test_loader))
+        avg_loss = epoch_loss / float(len(test_set))
         return avg_loss
 
 
