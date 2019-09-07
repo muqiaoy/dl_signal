@@ -22,7 +22,7 @@ def resample_musicnet(file_in, file_out, frame_rate, frame_rate_out):
 
     resampled_data = {}
     with open(file_in, 'rb') as f_in:
-        data_in = numpy.load(file_in)
+        data_in = numpy.load(file_in, encoding='latin1')
         n_files = len(data_in.keys())
         for i, key in enumerate(data_in):
             print('.. aggregating {} ({} / {})'.format(key, i, n_files))
