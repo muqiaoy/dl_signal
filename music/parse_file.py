@@ -1,9 +1,15 @@
- #This file creates a .npy for each music piece
+'''
+*    Title: Introduction
+*    Author: John Thickstun
+*    Date: 2017
+*    Code version: N/A
+*    Availability: https://homes.cs.washington.edu/~thickstn/intro.html
+'''
+#This file creates a .npy for each music piece
 import numpy as np                                       # fast vectors and matrices
 import matplotlib.pyplot as plt                          # plotting
 from scipy import fft                                    # fast fourier transform
 from scipy.fftpack import rfft
-# from IPython.display import Audio
 
 from intervaltree import Interval,IntervalTree
 fs = 11000            # samples/second
@@ -14,7 +20,7 @@ stride = 512         # samples between windows
 stride_test = 128            # stride in test set
 k = 64            # number of window (time step) per piece
 k_test = 64
-data = np.load(open('/projects/rsalakhugroup/complex/original_musicnet_data/musicnet_11khz.npz','rb'), encoding='latin1')
+data = np.load(open('musicnet_11khz.npz','rb'), encoding='latin1')
 
 # split our dataset into train and test
 test_data = ['2303','2382','1819']
@@ -39,8 +45,8 @@ for i in range(len(train_data)):
                 else:
                     Ytrain[j,label.data[1]] = 1
         Xtrain = Xtrain.reshape(k, d*2, order='F')
-        np.save("/home/muqiaoy/musicnet/music_train_x_64_{}.npy".format(index), Xtrain)
-        np.save("/home/muqiaoy/musicnet/music_train_y_64_{}.npy".format(index), Ytrain)
+        np.save("music_train_x_64_{}.npy".format(index), Xtrain)
+        np.save("music_train_y_64_{}.npy".format(index), Ytrain)
         index = index + 1
 
 # create the test set
@@ -63,7 +69,7 @@ for i in range(len(test_data)):
                 else:
                     Ytest[j,label.data[1]] = 1
         Xtest = Xtest.reshape(k_test, d*2, order='F')
-        np.save("/home/muqiaoy/musicnet/music_test_x_64_{}.npy".format(index), Xtest)
-        np.save("/home/muqiaoy/musicnet/music_test_y_64_{}.npy".format(index), Ytest)
+        np.save("music_test_x_64_{}.npy".format(index), Xtest)
+        np.save("music_test_y_64_{}.npy".format(index), Ytest)
         index = index + 1
 print("finished")
