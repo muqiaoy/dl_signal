@@ -36,10 +36,17 @@ Concatenated transformer for IQ generation: <br />
 `python -u transformer/train_gen_iq_concat.py`<br />
 
 LSTM for MusicNet generation: <br />
+<<<<<<< HEAD
 `python -u lstm_music_gen.py`<br />
 
 LSTM for IQ generation: <br />
 `python -u lstm_iq_gen.py`<br />
+=======
+`python -u lstm_music_gen.py --path path --batch_size 32 --hidden_size 800 --num_layers 3 --fc_hidden_size 2048 --output_dim 128 --lr 0.001 --dropout 0.5  --src_time_step 40 --trg_time_step 24`<br />
+
+LSTM for IQ generation: <br />
+`python -u lstm_iq_gen.py --path path --batch_size 128 --hidden_size 800 --num_layers 3 --fc_hidden_size 800 --src_time_step 40 --trg_time_step 24 --output_dim 50`<br />
+>>>>>>> 45c40071f4733c4b39c1d9cd1e501b5eaf360b2c
 <!-- To configure parameters, directly configure it through command line.<br />
 ## Path Configuration
 Example: `python -u transformer_train.py --path PATH`

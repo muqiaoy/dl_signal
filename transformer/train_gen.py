@@ -77,17 +77,9 @@ def train_model(settings):
             trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
 
             # clear gradients
-            model.zero_grad() 
-            # print(i_batch)
-            # print("x, y", data_batched.mean().item(), label_batched.mean().item())
-            outputs = model(x=src, y=trg) 
-            # print("final_out", outputs.mean().item())
-            # if torch.isnan(outputs).sum().item() > 0:
-                # print(outputs)
-                # assert False
-            #outputs = model(x=src, max_len=len(trg))
+            model.zero_grad()
+            outputs = model(x=src, y=trg)
             loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
-            # print("loss", loss.mean().item())
             if torch.isnan(loss).sum().item() > 0:
                 print(loss)
                 assert False
@@ -110,10 +102,6 @@ def train_model(settings):
                 src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
                 trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
                 trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
-
-                # clear gradients
-                # model.zero_grad()
-                #outputs = model(x=src, max_len=len(trg), start=trg[0].unsqueeze(0))
                 outputs = model(x=src, max_len=len(trg))
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
                 epoch_loss += loss.detach().item()
@@ -196,13 +184,6 @@ Data Loading
 """
 
 torch.set_default_tensor_type('torch.FloatTensor')
-# if torch.cuda.is_available():
-#     if args.no_cuda:
-#         print("WARNING: You have a CUDA device, so you should probably not run with --no_cuda")
-#     else:
-#         torch.cuda.manual_seed(args.seed)
-#         torch.set_default_tensor_type('torch.cuda.FloatTensor')
-#         use_cuda = True
 
 total_time_step = args.src_time_step + args.trg_time_step
 start = time.time()
