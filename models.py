@@ -5,7 +5,6 @@ from torch import nn
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.parameter import Parameter
-from sklearn.preprocessing import scale
 import torch.utils
 import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
@@ -13,8 +12,6 @@ import itertools
 import argparse
 import random
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-#https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
 
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, fc_hidden_size, output_size, bidirectional, num_layers=1, dropout=0.0):
@@ -28,17 +25,12 @@ class RNN(nn.Module):
                           dropout=dropout
                           )
         
-        # self.out = nn.Linear(hidden_size, output_size)
         self.fc1 = nn.Linear(hidden_size, fc_hidden_size) 
         self.fc2 = nn.Linear(fc_hidden_size, output_size) 
     
     # x: (batch_size, seq_len, input_size) 
     def forward(self, x):
         r_out, h_n = self.rnn(x, None) # r_out: (batch_size, seq_len, hidden_size)
-         
-        # output = self.out(r_out) # output: (batch_size, seq_len, output_size)
-
-        # last_layer_output = output[:, -1, :] # last_layer_output: (batch_size, output_size)
         last_time_step_out = r_out[:, -1,:] 
         last_layer_output = self.fc2(F.relu(self.fc1(last_time_step_out)))
 
@@ -57,10 +49,6 @@ class GRU(nn.Module):
                           dropout=dropout
                           )
                           
-        # self.out = nn.Sequential(
-        #         nn.Dropout(p = dropout),
-        #         nn.Linear(hidden_size, output_size)
-        #         )
         self.fc1 = nn.Linear(hidden_size, fc_hidden_size) 
         self.fc2 = nn.Linear(fc_hidden_size, output_size) 
 
@@ -68,10 +56,6 @@ class GRU(nn.Module):
     # x: (batch_size, seq_len, input_size) 
     def forward(self, x):
         r_out, h_n = self.gru(x, None) # r_out: (batch_size, seq_len, hidden_size)
-     
-        # output = self.out(r_out) # output: (batch_size, seq_len, output_size)
-        
-        # last_layer_output = output[:, -1, :] # last_layer_output: (batch_size, output_size)
 
         last_time_step_out = r_out[:, -1,:] 
         last_layer_output = self.fc2(F.relu(self.fc1(last_time_step_out)))
@@ -91,7 +75,6 @@ class LSTM(nn.Module):
                           dropout=dropout
                           )
                            
-        # self.out = nn.Linear(hidden_size, output_size)
         self.fc1 = nn.Linear(hidden_size, fc_hidden_size) 
         self.fc2 = nn.Linear(fc_hidden_size, output_size) 
 
@@ -100,17 +83,11 @@ class LSTM(nn.Module):
     def forward(self, x):
         r_out, h_n = self.rnn(x, None)  # r_out: (batch_size, seq_len, hidden_size)
          
-        # output = self.out(r_out) # output: (batch_size, seq_len, output_size)
-
-        # last_layer_output = output[:, -1, :]  # last_layer_output: (batch_size, output_size)
         last_time_step_out = r_out[:, -1,:] 
         last_layer_output = self.fc2(F.relu(self.fc1(last_time_step_out)))
 
         return r_out, nn.functional.log_softmax(last_layer_output, dim=1)
 
-# data: (# sample, seq_len, input_size) 
-# label: (# sample, num_classes) 
-# evaluation function for all RNN models: RNN, GRU, LSTM 
 def eval_RNN_Model(data_loader, time_step, input_size, model, num_classes, loss_func, name, path):
     global device
     with torch.no_grad():
@@ -201,13 +178,10 @@ class FNN_crelu(nn.Module):
         self.fc2_b = torch.Tensor(np.random.randn(output_size) / np.sqrt(output_size)).to(device=device)
         self.dropout = nn.Dropout(dropout)
     
-    # x: (batch_size, 3200) (x[0] = [r, i, r, i, ....]) 
     def forward(self, x):
         global device 
         x = x.to(device=device)
 
-        # get real and imag parts 
-        # batch_size = len(x)
         even_indices = torch.tensor([i for i in range(self.input_size) if i % 2 == 0]).to(device=device)
         odd_indices = torch.tensor([i for i in range(self.input_size) if i % 2 == 1]).to(device=device)
 
@@ -276,7 +250,6 @@ class ComplexConv1d(nn.Module):
         self.conv_i = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 
     def forward(self,input_r, input_i):
-#        assert(input_r.size() == input_i.size())
         return self.conv_r(input_r)-self.conv_i(input_i), \
                self.conv_r(input_i)+self.conv_i(input_r)
 
@@ -490,12 +463,6 @@ class Encoder_LSTM(nn.Module):
         #src = [src sent len, batch size, input_dim]
         outputs, (hidden, cell) = self.lstm(src)
         
-        #outputs = [src sent len, batch size, hid dim * n directions]
-        #hidden = [n layers * n directions, batch size, hid dim]
-        #cell = [n layers * n directions, batch size, hid dim]
-        
-        #outputs are always from the top hidden layer, so included in hidden 
-        
         return hidden, cell
 
 class Decoder_LSTM(nn.Module):
@@ -509,8 +476,6 @@ class Decoder_LSTM(nn.Module):
         self.n_layers = n_layers
         self.fc_hidden_dim = fc_hidden_dim 
         self.dropout = dropout
-        #assert input_dim == output_dim \
-        #     "Decoder nust have smae input and output dimensions"
     
         self.lstm = nn.LSTM(input_dim, hid_dim, n_layers, dropout = dropout)
         
@@ -519,34 +484,9 @@ class Decoder_LSTM(nn.Module):
         
     def forward(self, input, hidden, cell):
         
-        #hidden = [n layers * n directions, batch size, hid dim]
-        #cell = [n layers * n directions, batch size, hid dim]
-        
-        #n directions in the decoder will both always be 1, therefore:
-        #hidden = [n layers, batch size, hid dim]
-        #context = [n layers, batch size, hid dim]
-        
         input = input.unsqueeze(0) # inserting a new dimension to be seq len 
         output, (hidden, cell) = self.lstm(input, (hidden, cell))
-        #output = [sent len, batch size, hid dim * n directions]
-        #hidden = [n layers * n directions, batch size, hid dim]
-        #cell = [n layers * n directions, batch size, hid dim]
-        
-        #sent len and n directions will always be 1 in the decoder, therefore:
-        #output = [1, batch size, hid dim]
-        #hidden = [n layers, batch size, hid dim]
-        #cell = [n layers, batch size, hid dim]
-        
-        # print("output.shape")
-        # print(output.shape)
-
-        # prediction = self.out(output.squeeze(0)) # unsqueezE: [1, batch size, hid dim] -> [batch size, hid dim]
         prediction = self.fc2(F.relu(self.fc1(output.squeeze(0))))
-        # print("prediction")
-        
-        #prediction = [batch size, output dim]
-        # print("perdiction.shape")
-        # print(prediction.shape)
         return prediction, hidden, cell
 
 
@@ -557,6 +497,7 @@ class Seq2Seq(nn.Module):
         self.decoder = decoder
         self.device = device
         self.out_fc = nn.Linear(decoder.output_dim, decoder.final_output_dim)
+        self.final_fc = nn.Linear(decoder.final_output_dim, 1000)
         assert encoder.hid_dim == decoder.hid_dim, \
             "Hidden dimensions of encoder and decoder must be equal!"
         assert encoder.n_layers == decoder.n_layers, \
@@ -578,19 +519,16 @@ class Seq2Seq(nn.Module):
         input = torch.zeros(batch_size, trg_input_size).to(self.device)
         
         for t in range(max_len):
-            # print(t)
-            # print(input.shape)
             output, hidden, cell = self.decoder(input, hidden, cell)   # output: [batch size, output dim]
             outputs[t] = output                                        # storing ouput at: 1 -> max_len 
             teacher_force = random.random() < teacher_forcing_ratio
-            # top1 = output.max(1)[1]
-            # input = (trg[t] if teacher_force else top1)
             input = (trg[t] if teacher_force else output)
         outputs = self.out_fc(outputs)
+        if dataset == "iq":
+            outputs = self.final_fc(outputs[-1])
         return outputs # (seq_len, bs, output_dim)
 
-def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset):
-    # global device
+def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, criterion, name, path, device, dataset, dataset_raw):
     with torch.no_grad():
         model.eval()
         
@@ -599,15 +537,17 @@ def eval_Seq2Seq(data_loader, src_time_step, trg_time_step, input_size, model, c
             cur_batch_size = len(data_batched) 
             src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
             trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
+            trg_label = label_batched.cuda()
             outputs = model(src=src, trg=trg, dataset=dataset) # (ts, bs, input_size)
             if dataset == "music":
-                src_label = label_batched[:, 0 : src_time_step, :].transpose(1, 0).cuda()
                 trg_label = label_batched[:, src_time_step : , :].transpose(1, 0).cuda()
                 loss = criterion(outputs.transpose(0, 1).double(), trg_label.transpose(0, 1).double())
             elif dataset == "iq":
-                loss = criterion(outputs, trg)
-            epoch_loss += loss 
-
-        avg_loss = epoch_loss / float(len(data_loader))
+                loss = criterion(outputs.double(), trg_label.long())
+            epoch_loss += loss.detach().item()
+        if dataset == "music":
+            avg_loss = epoch_loss / float(len(data_loader))
+        elif dataset == "iq":
+            avg_loss = epoch_loss / float(len(dataset_raw))
         print("%s loss %f" % (name, avg_loss))
     return avg_loss 

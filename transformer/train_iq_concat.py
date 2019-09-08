@@ -36,9 +36,7 @@ def train_transformer():
     print("Model size: {0}".format(count_parameters(model)))
 
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
-    # For Rprop and SparseAdam and LBFGS
-    #optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction="sum")
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
     settings = {'model': model,
                 'optimizer': optimizer,
@@ -72,7 +70,7 @@ def train_model(settings):
             optimizer.step()
             total_batch_size += batch_size
             total_correct += (batch_y == preds.argmax(-1)).sum()
-            epoch_loss += loss.item() * batch_size
+            epoch_loss += loss.detach().item()
         aps = float(total_correct) / float(total_batch_size) 
         return epoch_loss / len(training_set), aps
 
@@ -91,7 +89,7 @@ def train_model(settings):
                 loss = criterion(preds, batch_y)
                 total_batch_size += batch_size
                 total_correct += (batch_y == preds.argmax(-1)).sum()
-                epoch_loss += loss.item() * batch_size
+                epoch_loss += loss.detach().item()
             aps = float(total_correct) / float(total_batch_size)
         return epoch_loss / len(test_set), aps
 
@@ -117,19 +115,19 @@ parser.add_argument('--attn_dropout', type=float, default=0.0,
                     help='attention dropout')
 parser.add_argument('--attn_mask', action='store_true',
                     help='use attention mask for Transformer (default: False)')
-parser.add_argument('--batch_size', type=int, default=1, metavar='N',
-                    help='batch size (default: 1)')
+parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+                    help='batch size (default: 128)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
-parser.add_argument('--data', type=str, default='music')
-parser.add_argument('--embed_dim', type=int, default=128,
-                    help='dimension of real and imag embeddimg before transformer (default: 100)')
-parser.add_argument('--hidden_size', type=int, default=2000,
-                    help='hidden_size in transformer (default: 2000)')
-parser.add_argument('--lr', type=float, default=1e-3,
-                    help='initial learning rate (default: 1e-3)')
-parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
-                    help='lengths of each modality (default: [2048, 2048])')
+parser.add_argument('--data', type=str, default='iq/')
+parser.add_argument('--embed_dim', type=int, default=320,
+                    help='dimension of real and imag embeddimg before transformer (default: 320)')
+parser.add_argument('--hidden_size', type=int, default=2048,
+                    help='hidden_size in transformer (default: 2048)')
+parser.add_argument('--lr', type=float, default=1e-4,
+                    help='initial learning rate (default: 1e-4)')
+parser.add_argument('--modal_lengths', nargs='+', type=int, default=[80, 80],
+                    help='lengths of each modality (default: [80, 80])')
 parser.add_argument('--model', type=str, default='Transformer',
                     help='name of the model to use (Transformer, etc.)')
 parser.add_argument('--nlevels', type=int, default=6,
@@ -138,13 +136,13 @@ parser.add_argument('--num_epochs', type=int, default=2000,
                     help='number of epochs (default: 2000)')
 parser.add_argument('--num_heads', type=int, default=8,
                     help='number of heads for the transformer network')
-parser.add_argument('--optim', type=str, default='SGD',
-                    help='optimizer to use (default: SGD)')
+parser.add_argument('--optim', type=str, default='Adam',
+                    help='optimizer to use (default: Adam)')
 parser.add_argument('--out_dropout', type=float, default=0.5,
                     help='hidden layer dropout')
-parser.add_argument('--output_dim', type=int, default=128,
-                    help='dimension of output (default: 128)')
-parser.add_argument('--path', type=str, default='data',
+parser.add_argument('--output_dim', type=int, default=1000,
+                    help='dimension of output (default: 1000)')
+parser.add_argument('--path', type=str, default='iq/',
                     help='path for storing the dataset')
 parser.add_argument('--relu_dropout', type=float, default=0.1,
                     help='relu dropout')
@@ -152,11 +150,9 @@ parser.add_argument('--res_dropout', type=float, default=0.1,
                     help='residual block dropout')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
-parser.add_argument('--time_step', type=int, default=2048,
-                    help='number of time step for each sequence(default: 2048)')
+parser.add_argument('--time_step', type=int, default=20,
+                    help='number of time step for each sequence(default: 20)')
 
-# For distributed
-#parser.add_argument("--local_rank", type=int)
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
@@ -167,12 +163,7 @@ torch.backends.cudnn.deterministic = True
 print(args)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# For distributed
-#torch.cuda.set_device(args.local_rank)
 use_cuda = True
-
-# For distributed
-#torch.distributed.init_process_group(backend='nccl', init_method='env://')
 
 """
 Data Loading

@@ -40,9 +40,8 @@ def train_transformer():
 
     print("Model size: {0}".format(count_parameters(model)))
 
-    optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=1e-7)
-    criterion= nn.MSELoss() 
-
+    optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr, weight_decay=0)
+    criterion= nn.CrossEntropyLoss(reduction="sum")
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
     settings = {'model': model,
@@ -69,37 +68,40 @@ def train_model(settings):
         epoch_loss = 0
         
         model.train()
-
         for i_batch, (data_batched, label_batched) in enumerate(train_loader):
-            cur_batch_size = len(data_batched) 
+            cur_batch_size = len(data_batched)
             src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
             trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-            model.zero_grad() 
-            outputs = model(x=src, y=trg) 
-            loss = criterion(outputs, trg)
+            trg_label = label_batched.cuda()
+            model.zero_grad()
+            outputs = model(x=src, y=trg)
+            loss = criterion(outputs.double(), trg_label.long())
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             optimizer.step()
+            epoch_loss += loss.detach().item()
 
-            epoch_loss += loss 
-
-        avg_loss = epoch_loss / float(len(train_loader))
+        avg_loss = epoch_loss / float(len(training_set))
 
         return avg_loss
+
 
     def evaluate(model, criterion):
         model.eval()
         epoch_loss = 0
+
         with torch.no_grad():
             for i_batch, (data_batched, label_batched) in enumerate(test_loader):
                 cur_batch_size = len(data_batched)
                 src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
                 trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
-                outputs = model(x=src, y=trg)
-                loss = criterion(outputs, trg)
-                epoch_loss += loss
-        avg_loss = epoch_loss / float(len(test_loader))
+                trg_label = label_batched.cuda()
+                outputs = model(x=src, max_len=len(trg))
+                loss = criterion(outputs.double(), trg_label.long())
+                epoch_loss += loss.detach().item()
+        avg_loss = epoch_loss / float(len(test_set))
         return avg_loss
+
 
 
 
@@ -120,16 +122,15 @@ def train_model(settings):
 
 
 parser = argparse.ArgumentParser(description='Signal Data Analysis')
-parser.add_argument('-f', default='', type=str)
 parser.add_argument('--model', type=str, default='Transformer',
                     help='name of the model to use (Transformer, etc.)')
-parser.add_argument('--embed_dim', type=int, default=128,
-                    help='dimension of real and imag embeddimg before transformer (default: 100)')
-parser.add_argument('--data', type=str, default='music')
-parser.add_argument('--path', type=str, default='data',
+parser.add_argument('--embed_dim', type=int, default=320,
+                    help='dimension of real and imag embeddimg before transformer (default: 320)')
+parser.add_argument('--data', type=str, default='iq')
+parser.add_argument('--path', type=str, default='iq/',
                     help='path for storing the dataset')
-parser.add_argument('--src_time_step', type=int, default=30)
-parser.add_argument('--trg_time_step', type=int, default=20)
+parser.add_argument('--src_time_step', type=int, default=40)
+parser.add_argument('--trg_time_step', type=int, default=24)
 parser.add_argument('--attn_dropout', type=float, default=0.0,
                     help='attention dropout')
 parser.add_argument('--relu_dropout', type=float, default=0.1,
@@ -140,24 +141,24 @@ parser.add_argument('--out_dropout', type=float, default=0.5,
                     help='output dropout')
 parser.add_argument('--nlevels', type=int, default=6,
                     help='number of layers in the network (if applicable) (default: 6)')
-parser.add_argument('--num_epochs', type=int, default=200,
-                    help='number of epochs (default: 200)')
+parser.add_argument('--num_epochs', type=int, default=2000,
+                    help='number of epochs (default: 2000)')
 parser.add_argument('--num_heads', type=int, default=8,
                     help='number of heads for the transformer network')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
-parser.add_argument('--batch_size', type=int, default=64, metavar='N',
-                    help='batch size (default: 64)')
+parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+                    help='batch size (default: 128)')
 parser.add_argument('--attn_mask', action='store_true',
                     help='use attention mask for Transformer (default: False)')
-parser.add_argument('--lr', type=float, default=1e-3,
-                    help='initial learning rate (default: 1e-3)')
+parser.add_argument('--lr', type=float, default=1e-4,
+                    help='initial learning rate (default: 1e-4)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
 parser.add_argument('--optim', type=str, default='Adam',
                     help='optimizer to use (default: Adam)')
-parser.add_argument('--hidden_size', type=int, default=200,
-                    help='hidden_size in transformer (default: 200)')
+parser.add_argument('--hidden_size', type=int, default=2048,
+                    help='hidden_size in transformer (default: 2048)')
 args = parser.parse_args()
 
 torch.manual_seed(args.seed)
@@ -191,7 +192,7 @@ else:
 
 train_loader = torch.utils.data.DataLoader(training_set, batch_size=args.batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=True)
-
+print("train_set", len(training_set))
 end = time.time() 
 print("Loading data time: %d" % (end - start))
 

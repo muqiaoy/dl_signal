@@ -3,12 +3,8 @@ import os
 import torch
 from torch import nn
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import scale
 import torch.utils
-from sklearn.metrics import confusion_matrix
-import itertools
 from utils import get_meta, get_len, save_checkpoint, count_parameters
 from utils import SignalDataset_music
 from models import Encoder_LSTM, Decoder_LSTM, Seq2Seq, eval_Seq2Seq
@@ -18,17 +14,16 @@ import time
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 import random
 
-# parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
 parser.add_argument('--bidirection', action='store_true')
-parser.add_argument('--path', dest='path', type=str)
-parser.add_argument('--batch_size', dest='batch_size', type=int)
-parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200) 
+parser.add_argument('--path', dest='music', type=str)
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=32)
+parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=800) 
 parser.add_argument('--output_dim', type=int, default=128)
-parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200) 
-parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) 
-parser.add_argument('--dropout',dest='dropout',type=float, default=0.0)
-parser.add_argument('--lr',dest='lr',type=float, default=0.05) 
+parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=2048) 
+parser.add_argument('--num_layers',dest='num_layers',type=int, default=3) 
+parser.add_argument('--dropout',dest='dropout',type=float, default=0.5)
+parser.add_argument('--lr',dest='lr',type=float, default=0.001) 
 parser.add_argument('--momentum', dest='momentum', type=float, default=0.9) 
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-7)
 parser.add_argument('--epoch', type=int, default=2000)
@@ -126,8 +121,8 @@ for epoch in range(args.epoch):
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         op.step()
     
-    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "music") 
-    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device, "music") 
+    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "music", training_set) 
+    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device, "music", test_set) 
     
     # anneal learning 
     scheduler.step(loss_test)

@@ -3,7 +3,6 @@ import os
 import torch
 from torch import nn
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import scale
 import torch.utils
@@ -17,26 +16,25 @@ import argparse
 import time 
 import random
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
 
 # parse command line arguments 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
-parser.add_argument('--arch', dest='arch', type=str) 
+parser.add_argument('--arch', dest='arch', type=str)
 parser.add_argument('--bidirection', action='store_true')
 parser.add_argument('--data', dest='data', default='iq')
-parser.add_argument('--path', dest='path', type=str)
-parser.add_argument('--batch_size', dest='batch_size', type=int)
-parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=200) 
+parser.add_argument('--path', dest='path', type=str, default='iq/')
+parser.add_argument('--batch_size', dest='batch_size', type=int, default=128)
+parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=800) 
 parser.add_argument('--output_dim', type=int, default=1000)
-parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=200) 
-parser.add_argument('--num_layers',dest='num_layers',type=int, default=2) 
-parser.add_argument('--dropout',dest='dropout',type=float, default=0.0)
-parser.add_argument('--lr',dest='lr',type=float, default=0.05) 
+parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=800) 
+parser.add_argument('--num_layers',dest='num_layers',type=int, default=3) 
+parser.add_argument('--dropout',dest='dropout',type=float, default=0.5)
+parser.add_argument('--lr',dest='lr',type=float, default=0.001) 
 parser.add_argument('--momentum', dest='momentum', type=float, default=0.9) 
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-7)
 parser.add_argument('--epoch', type=int, default=2000)
-parser.add_argument('--src_time_step', type=int, default=12)
-parser.add_argument('--trg_time_step', type=int, default=8)
+parser.add_argument('--src_time_step', type=int, default=40)
+parser.add_argument('--trg_time_step', type=int, default=24)
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('--clip', type=float, default=0.35, help='gradient clip value (default: 0.35)')
@@ -54,8 +52,6 @@ print(args)
 # input_size calculated based on src_time_step and trg_time_step 
 if args.data == 'iq': 
     input_size = int(3200 / (args.src_time_step + args.trg_time_step))
-elif args.data == 'music':
-    input_size = 4096 
 
 params_dataloader = {
     'batch_size' : int(args.batch_size),
@@ -81,9 +77,8 @@ trg_time_step = args.trg_time_step
 fc_hidden_size = args.fc_hidden_size
 arch = args.arch
 
-total_time_step = src_time_step + trg_time_step 
-if args.data == 'music': 
-    assert(total_time_step == 128)
+total_time_step = src_time_step + trg_time_step
+assert 3200 % total_time_step == 0
 
 print("Start loading data") 
 start = time.time()
@@ -94,9 +89,6 @@ train_loader = torch.utils.data.DataLoader(training_set, **params_dataloader)
 test_loader = torch.utils.data.DataLoader(test_set, **params_dataloader)
 
 end = time.time()
-print("Loading data time: %d" % (end - start))
-print("train len:", len(train_loader)) 
-print("test len:", len(test_loader))
 
 # get num_classes from training data set 
 num_classes = training_set.num_classes
@@ -106,8 +98,7 @@ encoder = Encoder_LSTM(**params_model)
 decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim, fc_hidden_dim=fc_hidden_size)
 model = Seq2Seq(encoder, decoder, device).to(device) 
 print("Model size: {0}".format(count_parameters(model)))
-
-criterion= nn.MSELoss() 
+criterion= nn.CrossEntropyLoss(reduction="sum")
 op = torch.optim.Adam(model.parameters())
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     op, patience=2, factor=0.5, verbose=True)
@@ -126,15 +117,16 @@ for epoch in range(args.epoch):
         cur_batch_size = len(data_batched) 
         src = data_batched[:, 0 : src_time_step, :].transpose(1, 0).float().cuda()
         trg = data_batched[:, src_time_step : , :].transpose(1, 0).float().cuda()
+        trg_label = label_batched.cuda()
         outputs = model(src=src, trg=trg, teacher_forcing_ratio=0.5, dataset="iq") # (ts, bs, input_size)
         op.zero_grad()
-        loss = criterion(outputs, trg)
+        loss = criterion(outputs.double(), trg_label.long())
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         op.step()
     
-    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "iq") 
-    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device, "iq") 
+    _ = eval_Seq2Seq(train_loader, src_time_step, trg_time_step, input_size, model, criterion, "train", path, device, "iq", training_set) 
+    loss_test = eval_Seq2Seq(test_loader, src_time_step, trg_time_step, input_size, model, criterion, "test", path, device, "iq", test_set) 
     
     # anneal learning 
     scheduler.step(loss_test)

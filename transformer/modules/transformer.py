@@ -120,9 +120,9 @@ class TransformerEncoderLayer(nn.Module):
         x_A = x_aaa - x_abb - x_bab - x_bba
         x_B = -x_bbb + x_baa + x_aba + x_aab
         
+         
         x_A = self.layer_norms_A[0](x_A)
         x_B = self.layer_norms_B[0](x_B)
-        
         # Dropout and Residual
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
@@ -145,6 +145,7 @@ class TransformerEncoderLayer(nn.Module):
         # FC2
         x_A, x_B = self.fc2(x_A, x_B)
 
+        
         x_A = self.layer_norms_A[1](x_A)
         x_B = self.layer_norms_B[1](x_B)
 
@@ -295,12 +296,12 @@ class TransformerDecoderLayer(nn.Module):
         x_B = -x_bbb + x_baa + x_aba + x_aab
         
         # Layer Norm, Dropout and Residual;
-        x_A = self.layer_norms_A[0](x_A)
-        x_B = self.layer_norms_B[0](x_B)
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
         x_A += residual_A 
         x_B += residual_B
+        x_A = self.layer_norms_A[0](x_A)
+        x_B = self.layer_norms_B[0](x_B)
         
         residual_A = x_A
         residual_B = x_B
@@ -319,12 +320,12 @@ class TransformerDecoderLayer(nn.Module):
         x_B = x_acd + x_adc + x_bcc - x_bdd 
 
         # Layer Norm, Dropout and Residual;
-        x_A = self.layer_norms_A[1](x_A)
-        x_B = self.layer_norms_B[1](x_B)
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
         x_A += residual_A 
         x_B += residual_B
+        x_A = self.layer_norms_A[1](x_A)
+        x_B = self.layer_norms_B[1](x_B)
         
         residual_A = x_A 
         residual_B = x_B
@@ -338,13 +339,14 @@ class TransformerDecoderLayer(nn.Module):
 
         # FC2
         x_A, x_B = self.fc2(x_A, x_B)
-        x_A = self.layer_norms_A[2](x_A)
-        x_B = self.layer_norms_B[2](x_B)
         x_A = F.dropout(x_A, p=self.res_dropout, training=self.training)
         x_B = F.dropout(x_B, p=self.res_dropout, training=self.training)
         
         x_A += residual_A 
         x_B += residual_B 
+        x_A = self.layer_norms_A[2](x_A)
+        x_B = self.layer_norms_B[2](x_B)
+        #print("Attention here: ", x_A.mean().item(), x_B.mean().item())
 
         return x_A, x_B
 
@@ -525,8 +527,8 @@ class TransformerConcatDecoderLayer(nn.Module):
             num_heads=self.num_heads,
             attn_dropout=src_attn_dropout,
             bias=True,
-            add_bias_kv=False,
-            add_zero_attn=False, 
+            add_bias_kv=True,
+            add_zero_attn=True, 
         )
         self.src_mask = src_mask   # used as last arg in forward function call 
         self.tgt_mask = tgt_mask   # used as last arg in forward function call 
@@ -539,8 +541,8 @@ class TransformerConcatDecoderLayer(nn.Module):
             num_heads=self.num_heads, 
             attn_dropout=tgt_attn_dropout, 
             bias=True,
-            add_bias_kv=False, 
-            add_zero_attn=False, 
+            add_bias_kv=True, 
+            add_zero_attn=True, 
         )
 
         self.fc1 = nn.Linear(self.embed_dim, self.embed_dim)
@@ -556,9 +558,9 @@ class TransformerConcatDecoderLayer(nn.Module):
             mask = None
         x, _ = self.self_attn(x, x, x)
         # Layer Norm, Dropout and Residual;
-        x = self.layer_norms[0](x)
         x = F.dropout(x, p=self.res_dropout, training=self.training)
         x += residual
+        x = self.layer_norms[0](x)
         
         residual = x
         
@@ -566,24 +568,23 @@ class TransformerConcatDecoderLayer(nn.Module):
         x, _ = self.attn(x, enc, enc) 
 
         # Layer Norm, Dropout and Residual;
-        x = self.layer_norms[1](x)
         x = F.dropout(x, p=self.res_dropout, training=self.training)
         x += residual
+        x = self.layer_norms[1](x)
         
         residual = x
 
         x = F.relu(self.fc1(x))
         x = F.dropout(x, p=self.relu_dropout, training=self.training)
         x = self.fc2(x)
-        x = self.layer_norms[2](x)
         x = F.dropout(x, p=self.relu_dropout, training=self.training)
         
         x += residual
+        x = self.layer_norms[2](x)
 
         return x
 
 def fill_with_neg_inf(t):
-    """FP16-compatible function that fills a tensor with -inf."""
     return t.float().fill_(float('-inf')).type_as(t)
 
 def fill_with_one(t): 
@@ -608,7 +609,7 @@ def Linear(in_features, out_features, bias=True):
 
 
 def LayerNorm(embedding_dim):
-    m = nn.LayerNorm(embedding_dim)
+    m = nn.LayerNorm(embedding_dim, eps=1e-20)
     return m
 
 

@@ -1,19 +1,11 @@
-# Hyperparameters are listed in the beginning of main().
-# The loss is calculated in NLLLoss.
-
 from __future__ import print_function, division
 import os
 import torch
 from torch import nn
-import pandas as pd
-from skimage import io, transform
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import scale
 import torch.utils
 from torch.autograd import Variable
-from sklearn.metrics import confusion_matrix
 import itertools
 from utils import get_meta, get_len
 from utils import SignalDataset
@@ -94,7 +86,6 @@ for epoch in range(args.epoch):
     model.train()
     for data_batched, label_batched in train_loader:
         data = Variable(data_batched.float()).to(device=device)
-        #print(data.shape)
         label = Variable(np.argmax(label_batched, axis=2)
                          .long()).view(-1).to(device=device)
         _, pred_label = model(data)
@@ -129,7 +120,6 @@ for epoch in range(args.epoch):
     best_acc_test = max(acc_test, best_acc_test)
     save_checkpoint({
                     'epoch': epoch + 1,
-                    #'arch': args.arch,
                     'state_dict': model.state_dict(),
                     'best_acc1': best_acc_test,
                     'optimizer' : op.state_dict(),

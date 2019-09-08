@@ -16,21 +16,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class TransformerModel(nn.Module):
     def __init__(self, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, attn_mask=False):
-        """
-        Construct a basic Transfomer model for multimodal tasks.
-        
-        :param input_dims: The input dimensions of the various modalities.
-        :param hidden_size: The hidden dimensions of the fc layer.
-        :param embed_dim: The dimensions of the embedding layer.
-        :param output_dim: The dimensions of the output (128 in MuiscNet).
-        :param num_heads: The number of heads to use in the multi-headed attention. 
-        :param attn_dropout: The dropout following self-attention sm((QK)^T/d)V.
-        :param relu_droput: The dropout for ReLU in residual block.
-        :param res_dropout: The dropout of each residual block.
-        :param out_dropout: The dropout of output layer.
-        :param layers: The number of transformer blocks.
-        :param attn_mask: A boolean indicating whether to use attention mask (for transformer decoder).
-        """
         super(TransformerModel, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
@@ -90,9 +75,6 @@ class TransformerModel(nn.Module):
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask)
             
     def forward(self, x):
-        """
-        x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).
-        """
         time_step, batch_size, n_features = x.shape
         x = x.view(-1, 1, n_features)
         x = self.conv(x)
@@ -174,10 +156,7 @@ class TransformerGenerationModel(nn.Module):
         return TransformerConcatDecoder(embed_dim=self.embed_dim, num_heads=self.num_heads, layers=self.layers, src_attn_dropout=self.attn_dropout, 
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, tgt_attn_dropout=self.attn_dropout)
             
-    def forward(self, x, y):
-        """
-        x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).  
-        """
+    def forward(self, x, y=None, max_len=None):
 
         time_step, batch_size, n_features = x.shape
         
@@ -189,12 +168,31 @@ class TransformerGenerationModel(nn.Module):
         h_x = self.trans_encoder(x)
         
         # decoder
-        seq_len, batch_size, n_features2 = y.shape
-        y = y[:-1, :, :]                               # truncate last target 
-        sos = torch.zeros(1, batch_size, n_features2).cuda()
-        y = torch.cat([sos, y], dim=0)    # add <sos> to front 
-        y = self.proj_dec(y)
-        out = self.trans_decoder(input=y, enc=h_x)
-        out_concat = torch.cat([out], dim=-1)
-        output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
+        if y is not None:
+            seq_len, batch_size, n_features2 = y.shape 
+            y = y[:-1, :, :]
+            sos = torch.zeros(1, batch_size, n_features2).cuda()
+            y = torch.cat([sos, y], dim=0)    # add <sos> to front 
+            y = self.proj_dec(y)
+            out = self.trans_decoder(input=y, enc=h_x)
+            out_concat = torch.cat([out], dim=-1)
+            output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
+
+        elif max_len is not None:
+            dec_x = torch.zeros(1, batch_size, n_features).cuda()
+            dec_x = self.proj_dec(dec_x)
+
+            dec_x = self.trans_decoder(input=dec_x, enc=h_x) 
+            y = dec_x
+
+            for i in range(max_len - 1):
+                dec_x = self.trans_decoder(input=y, enc=h_x)
+                y = torch.cat([y, dec_x[-1].unsqueeze(0)], dim=0)
+            out_concat = torch.cat([y], dim=-1)
+            
+            output = self.out_fc2(self.out_dropout(F.relu(self.out_fc1(out_concat))))
+
+        else:
+            print("Only one of y and max_len should be input.")
+            assert False
         return output 
