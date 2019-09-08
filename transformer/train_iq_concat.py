@@ -119,7 +119,7 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='batch size (default: 128)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
-parser.add_argument('--data', type=str, default='iq/')
+parser.add_argument('--data', type=str, default='iq')
 parser.add_argument('--embed_dim', type=int, default=320,
                     help='dimension of real and imag embeddimg before transformer (default: 320)')
 parser.add_argument('--hidden_size', type=int, default=2048,
