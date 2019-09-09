@@ -170,7 +170,8 @@ torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
 start_time = time.time() 
 if args.data == 'music':
-    print("This file is for iq dataset only; use train_music.py for training music net.")
+    print("This file is for iq dataset only; use train.py for training music net.")
+    assert False
 elif args.data == 'iq':
     training_set = SignalDataset_iq(args.path, args.time_step, train=True)
     test_set = SignalDataset_iq(args.path, args.time_step, train=False)

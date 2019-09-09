@@ -451,22 +451,24 @@ class Encoder_LSTM(nn.Module):
         super().__init__()
         
         self.input_dim = input_dim
+        self.embedding = nn.Linear(input_dim, input_dim)
         self.hid_dim = hid_dim
         self.n_layers = n_layers
-        self.dropout = dropout
         
         
         self.lstm = nn.LSTM(input_dim, hid_dim, n_layers, dropout = dropout)
+        self.dropout = nn.Dropout(dropout)
         
     def forward(self, src):
         
         #src = [src sent len, batch size, input_dim]
+        src = self.dropout(self.embedding(src))
         outputs, (hidden, cell) = self.lstm(src)
         
         return hidden, cell
 
 class Decoder_LSTM(nn.Module):
-    def __init__(self, input_dim, output_dim, hid_dim, n_layers, fc_hidden_dim, dropout):
+    def __init__(self, input_dim, output_dim, hid_dim, n_layers, dropout):
         super().__init__()
 
         self.input_dim = input_dim
@@ -474,19 +476,19 @@ class Decoder_LSTM(nn.Module):
         self.output_dim = input_dim
         self.final_output_dim = output_dim
         self.n_layers = n_layers
-        self.fc_hidden_dim = fc_hidden_dim 
-        self.dropout = dropout
     
         self.lstm = nn.LSTM(input_dim, hid_dim, n_layers, dropout = dropout)
+        self.dropout = nn.Dropout(dropout)
         
-        self.fc1 = nn.Linear(self.hid_dim, self.fc_hidden_dim) 
-        self.fc2 = nn.Linear(self.fc_hidden_dim, self.output_dim) 
+        self.fc1 = nn.Linear(self.input_dim, self.input_dim) 
+        self.fc2 = nn.Linear(self.hid_dim, self.output_dim) 
         
     def forward(self, input, hidden, cell):
         
         input = input.unsqueeze(0) # inserting a new dimension to be seq len 
+        input = self.dropout(self.fc1(input))
         output, (hidden, cell) = self.lstm(input, (hidden, cell))
-        prediction = self.fc2(F.relu(self.fc1(output.squeeze(0))))
+        prediction = self.fc2(output.squeeze(0))
         return prediction, hidden, cell
 
 

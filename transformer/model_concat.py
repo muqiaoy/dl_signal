@@ -16,6 +16,21 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class TransformerModel(nn.Module):
     def __init__(self, time_step, input_dims, hidden_size, embed_dim, output_dim, num_heads, attn_dropout, relu_dropout, res_dropout, out_dropout, layers, attn_mask=False):
+        """
+        Construct a basic Transfomer model.
+        
+        :param input_dims: The input dimensions of the various modalities.
+        :param hidden_size: The hidden dimensions of the fc layer.
+        :param embed_dim: The dimensions of the embedding layer.
+        :param output_dim: The dimensions of the output (128 in MuiscNet).
+        :param num_heads: The number of heads to use in the multi-headed attention. 
+        :param attn_dropout: The dropout following self-attention sm((QK)^T/d)V.
+        :param relu_droput: The dropout for ReLU in residual block.
+        :param res_dropout: The dropout of each residual block.
+        :param out_dropout: The dropout of output layer.
+        :param layers: The number of transformer blocks.
+        :param attn_mask: A boolean indicating whether to use attention mask (for transformer decoder).
+        """
         super(TransformerModel, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=16, kernel_size=6, stride=1),
@@ -75,6 +90,9 @@ class TransformerModel(nn.Module):
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, attn_mask=self.attn_mask)
             
     def forward(self, x):
+        """
+        x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).
+        """
         time_step, batch_size, n_features = x.shape
         x = x.view(-1, 1, n_features)
         x = self.conv(x)
@@ -157,7 +175,9 @@ class TransformerGenerationModel(nn.Module):
             relu_dropout=self.relu_dropout, res_dropout=self.res_dropout, tgt_attn_dropout=self.attn_dropout)
             
     def forward(self, x, y=None, max_len=None):
-
+        """
+        x should have dimension [seq_len, batch_size, n_features] (i.e., L, N, C).
+        """
         time_step, batch_size, n_features = x.shape
         
         # encoder

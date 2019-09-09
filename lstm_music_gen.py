@@ -16,11 +16,10 @@ import random
 
 parser = argparse.ArgumentParser(description='Signal Prediction Argument Parser')
 parser.add_argument('--bidirection', action='store_true')
-parser.add_argument('--path', dest='music', type=str)
+parser.add_argument('--path', type=str, default="music")
 parser.add_argument('--batch_size', dest='batch_size', type=int, default=32)
 parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=800) 
 parser.add_argument('--output_dim', type=int, default=128)
-parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=2048) 
 parser.add_argument('--num_layers',dest='num_layers',type=int, default=3) 
 parser.add_argument('--dropout',dest='dropout',type=float, default=0.5)
 parser.add_argument('--lr',dest='lr',type=float, default=0.001) 
@@ -67,7 +66,6 @@ params_op = {
 path = args.path
 src_time_step = args.src_time_step
 trg_time_step = args.trg_time_step
-fc_hidden_size = args.fc_hidden_size
 
 total_time_step = src_time_step + trg_time_step 
 assert(total_time_step == 64 or total_time_step == 128) 
@@ -92,7 +90,7 @@ num_classes = args.output_dim
 
 # init model
 encoder = Encoder_LSTM(**params_model)
-decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim, fc_hidden_dim=fc_hidden_size)
+decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim)
 model = Seq2Seq(encoder, decoder, device).to(device) 
 print("Model size: {0}".format(count_parameters(model)))
 criterion = nn.BCEWithLogitsLoss()
