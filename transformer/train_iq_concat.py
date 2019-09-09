@@ -119,7 +119,7 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='batch size (default: 128)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
-parser.add_argument('--data', type=str, default='iq/')
+parser.add_argument('--data', type=str, default='iq')
 parser.add_argument('--embed_dim', type=int, default=320,
                     help='dimension of real and imag embeddimg before transformer (default: 320)')
 parser.add_argument('--hidden_size', type=int, default=2048,
@@ -172,7 +172,8 @@ torch.set_default_tensor_type('torch.FloatTensor')
 print("Start loading the data....")
 start_time = time.time() 
 if args.data == 'music':
-    print("This file is for iq dataset only; use train_music.py for training music net.")
+    print("This file is for iq dataset only; use train_concat.py for training music net.")
+    assert False
 elif args.data == 'iq':
     training_set = SignalDataset_iq(args.path, args.time_step, train=True)
     test_set = SignalDataset_iq(args.path, args.time_step, train=False)

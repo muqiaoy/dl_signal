@@ -26,10 +26,9 @@ parser.add_argument('--path', dest='path', type=str, default='iq/')
 parser.add_argument('--batch_size', dest='batch_size', type=int, default=128)
 parser.add_argument('--hidden_size', dest='hidden_size', type=int, default=800) 
 parser.add_argument('--output_dim', type=int, default=1000)
-parser.add_argument('--fc_hidden_size', dest='fc_hidden_size', type=int, default=800) 
 parser.add_argument('--num_layers',dest='num_layers',type=int, default=3) 
 parser.add_argument('--dropout',dest='dropout',type=float, default=0.5)
-parser.add_argument('--lr',dest='lr',type=float, default=0.001) 
+parser.add_argument('--lr',dest='lr',type=float, default=0.0001) 
 parser.add_argument('--momentum', dest='momentum', type=float, default=0.9) 
 parser.add_argument('--weight_decay', dest='weight_decay', type=float, default=1e-7)
 parser.add_argument('--epoch', type=int, default=2000)
@@ -74,7 +73,6 @@ params_op = {
 path = args.path
 src_time_step = args.src_time_step
 trg_time_step = args.trg_time_step
-fc_hidden_size = args.fc_hidden_size
 arch = args.arch
 
 total_time_step = src_time_step + trg_time_step
@@ -95,7 +93,7 @@ num_classes = training_set.num_classes
 
 # init model
 encoder = Encoder_LSTM(**params_model)
-decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim, fc_hidden_dim=fc_hidden_size)
+decoder = Decoder_LSTM(**params_model, output_dim=args.output_dim)
 model = Seq2Seq(encoder, decoder, device).to(device) 
 print("Model size: {0}".format(count_parameters(model)))
 criterion= nn.CrossEntropyLoss(reduction="sum")
