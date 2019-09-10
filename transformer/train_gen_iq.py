@@ -152,8 +152,8 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                     help='batch size (default: 128)')
 parser.add_argument('--attn_mask', action='store_true',
                     help='use attention mask for Transformer (default: False)')
-parser.add_argument('--lr', type=float, default=1e-3,
-                    help='initial learning rate (default: 1e-3)')
+parser.add_argument('--lr', type=float, default=1e-4,
+                    help='initial learning rate (default: 1e-4)')
 parser.add_argument('--clip', type=float, default=0.35,
                     help='gradient clip value (default: 0.35)')
 parser.add_argument('--optim', type=str, default='Adam',

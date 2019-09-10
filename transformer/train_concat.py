@@ -133,8 +133,8 @@ parser.add_argument('--embed_dim', type=int, default=320,
                     help='dimension of real and imag embeddimg before transformer (default: 320)')
 parser.add_argument('--hidden_size', type=int, default=2048,
                     help='hidden_size in transformer (default: 2048)')
-parser.add_argument('--lr', type=float, default=1e-3,
-                    help='initial learning rate (default: 1e-3)')
+parser.add_argument('--lr', type=float, default=1e-4,
+                    help='initial learning rate (default: 1e-4)')
 parser.add_argument('--modal_lengths', nargs='+', type=int, default=[2048, 2048],
                     help='lengths of each modality (default: [2048, 2048])')
 parser.add_argument('--model', type=str, default='Transformer',
