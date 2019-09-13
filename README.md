@@ -9,7 +9,7 @@ packages: `pip install numpy scipy sklearn intervaltree resampy torch`<br />
 This code base relies on GPUs and cuda.
 ## Transformer model
 <p align="center">
-  <img src="https://github.com/martinmamql/dl_signal/blob/master/img/transformer.png" alt="Complex Transformer"/>
+  <img src="https://github.com/muqiaoyang/dl_signal/tree/master/img/transformer.png" alt="Complex Transformer"/>
 </p>
 
 ## File parsing
