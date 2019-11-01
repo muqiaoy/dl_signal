@@ -1,7 +1,6 @@
 # Complex Transformer
-A deep learning model which incorporates the transformer model as a backbone and develop complex attention and encoder/decoder network operating on complex-valued input.<br />
-This model achieves state-of-the-art results on music transcription tasks. <br />
-**Title:**      "Complex Transformer: A Framework for Modeling Complex-Valued Sequence" <br />
+A deep learning model which incorporates the transformer model as a backbone and develop complex attention and encoder/decoder network operating on complex-valued input. This model achieves state-of-the-art results on music transcription tasks. <br />
+**Title:**      Complex Transformer: A Framework for Modeling Complex-Valued Sequence <br />
 **Arxiv:**      https://arxiv.org/abs/1910.10202 <br />
 
 ## Requirement
